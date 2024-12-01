@@ -1,0 +1,8 @@
+# Get performance metrics
+string metric_type                 # "convergence", "path_length", "time", "energy", "all"
+string algorithm                   # Filter by algorithm, empty for all
+---
+bool success
+string[] labels
+float64[] values
+string[] units

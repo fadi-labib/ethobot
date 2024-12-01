@@ -1,0 +1,20 @@
+# Goal: Run optimization algorithm
+string algorithm                   # "pso", "aco", "ga"
+uint32 max_iterations              # Maximum iterations
+float64 target_fitness             # Stop if fitness reaches this
+float64 timeout_sec                # Maximum time in seconds
+string[] robot_ids                 # Robots to use (empty = all)
+---
+# Result
+bool success
+string message
+float64 best_fitness
+geometry_msgs/Point[] best_solution
+uint32 iterations_used
+float64 time_elapsed_sec
+---
+# Feedback
+uint32 current_iteration
+float64 current_best_fitness
+float64 improvement_rate
+ethobot_interfaces/SwarmState swarm_state

@@ -1,0 +1,8 @@
+# Set algorithm parameters at runtime
+string algorithm                   # "pso", "aco", "ga"
+string param_name                  # Parameter name
+float64 value                      # New value
+---
+bool success
+string message
+float64 previous_value

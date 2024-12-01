@@ -1,0 +1,9 @@
+# Request to spawn a robot in simulation
+string robot_type                  # "ground" or "aerial"
+string robot_name                  # Unique identifier
+geometry_msgs/Pose initial_pose
+string robot_namespace             # ROS namespace for the robot
+---
+bool success
+string message
+string robot_id                    # Assigned robot ID

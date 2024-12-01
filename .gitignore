@@ -1,0 +1,72 @@
+# ROS2 Build Artifacts
+build/
+install/
+log/
+
+# Colcon
+.colcon/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+*.egg
+.venv/
+venv/
+ENV/
+
+# C++
+*.o
+*.a
+*.lib
+*.dll
+*.dylib
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+compile_commands.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.cproject
+.settings/
+
+# Gazebo
+*.log
+*.world.sdf
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Documentation builds
+docs/_build/
+docs/html/
+docs/latex/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets (never commit)
+*.env
+.env.*
+credentials.json
+secrets.yaml
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
