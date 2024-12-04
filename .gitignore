@@ -1,3 +1,6 @@
+# Python version (pyenv)
+.python-version
+
 # ROS2 Build Artifacts
 build/
 install/

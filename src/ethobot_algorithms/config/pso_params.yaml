@@ -1,0 +1,12 @@
+pso_path_planning:
+  ros__parameters:
+    # Goal position
+    goal_x: 10.0
+    goal_y: 10.0
+
+    # PSO parameters
+    population_size: 30
+    max_iterations: 100
+
+    # Publishing rate
+    publish_rate_hz: 10.0
