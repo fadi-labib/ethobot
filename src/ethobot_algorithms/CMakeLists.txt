@@ -14,6 +14,7 @@ find_package(ethobot_core REQUIRED)
 find_package(ethobot_interfaces REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
 
 # PSO library
 add_library(pso_solver SHARED
@@ -69,9 +70,20 @@ install(
   RUNTIME DESTINATION bin
 )
 
+# Swarm visualizer node
+add_executable(swarm_visualizer_node
+  src/swarm_visualizer_node.cpp
+)
+
+ament_target_dependencies(swarm_visualizer_node
+  rclcpp
+  ethobot_interfaces
+  visualization_msgs
+)
+
 # Install executables
 install(
-  TARGETS pso_path_planning_node
+  TARGETS pso_path_planning_node swarm_visualizer_node
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -79,6 +91,18 @@ install(
 install(
   DIRECTORY config/
   DESTINATION share/${PROJECT_NAME}/config
+)
+
+# Install launch files
+install(
+  DIRECTORY launch/
+  DESTINATION share/${PROJECT_NAME}/launch
+)
+
+# Install rviz config
+install(
+  DIRECTORY rviz/
+  DESTINATION share/${PROJECT_NAME}/rviz
 )
 
 # Export

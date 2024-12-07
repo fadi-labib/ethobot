@@ -159,11 +159,11 @@ private:
       double dist_to_obs = std::sqrt(std::pow(x - ox, 2) + std::pow(y - oy, 2));
 
       if (dist_to_obs < radius) {
-        // Inside obstacle - heavy penalty
-        obstacle_penalty += 100.0 * (radius - dist_to_obs);
-      } else if (dist_to_obs < radius + 0.5) {
-        // Close to obstacle - small penalty (encourages clearance)
-        obstacle_penalty += 5.0 * (radius + 0.5 - dist_to_obs);
+        // Inside obstacle - very heavy penalty
+        obstacle_penalty += 1000.0;
+      } else if (dist_to_obs < radius + 1.0) {
+        // Close to obstacle - penalty (encourages clearance)
+        obstacle_penalty += 50.0 * (radius + 1.0 - dist_to_obs);
       }
     }
 
