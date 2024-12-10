@@ -7,15 +7,15 @@ This document outlines the implementation roadmap for the Ethobot project.
 Ethobot is being developed incrementally, starting with a minimal viable implementation and expanding functionality over time.
 
 ```
-Phase 1: Foundation     → Interfaces and core structure
-Phase 2: First Algorithm → PSO implementation
-Phase 3: Simulation     → Gazebo integration with ground robot
-Phase 4: Expansion      → Additional algorithms and robot types
+Phase 1: Foundation      → Interfaces and core structure    ✅ COMPLETE
+Phase 2: First Algorithm → PSO implementation               ✅ COMPLETE
+Phase 3: Simulation      → Gazebo integration with ground robot
+Phase 4: Expansion       → Additional algorithms and robot types
 ```
 
 ---
 
-## Phase 1: Foundation (Current)
+## Phase 1: Foundation ✅
 
 **Goal**: Establish project structure and ROS2 interfaces.
 
@@ -27,70 +27,64 @@ Phase 4: Expansion      → Additional algorithms and robot types
 - [x] README.md with project overview
 - [x] CLAUDE.md with development guidelines
 - [x] Documentation structure (docs/)
-
-### In Progress
-
-- [ ] `ethobot_interfaces` package
+- [x] `ethobot_interfaces` package
   - [x] Message definitions (ParticleState, SwarmState, RobotState, etc.)
   - [x] Service definitions (SpawnRobot, SetAlgorithmParams, GetMetrics)
   - [x] Action definitions (RunOptimization)
-  - [ ] Build verification with colcon
-
-### Dependencies for This Phase
-
-```bash
-source /opt/ros/jazzy/setup.bash
-sudo apt install ros-jazzy-desktop ros-dev-tools
-```
-
-### Deliverables
-
-1. Compilable `ethobot_interfaces` package
-2. Complete documentation structure
-3. Ready for algorithm implementation
+  - [x] Build verification with colcon
 
 ---
 
-## Phase 2: PSO Algorithm
+## Phase 2: PSO Algorithm ✅
 
 **Goal**: Implement Particle Swarm Optimization as the first bio-inspired algorithm.
 
-### Tasks
+### Completed
 
-- [ ] Create `ethobot_core` package
-  - [ ] `AlgorithmBase` abstract class
-  - [ ] `Problem` struct (fitness function interface)
-  - [ ] `OptimizationResult` struct
-  - [ ] Utility functions (coordinate transforms, etc.)
+- [x] Create `ethobot_core` package
+  - [x] `AlgorithmBase` abstract class
+  - [x] `Problem` struct (fitness function interface)
+  - [x] `OptimizationResult` struct
 
-- [ ] Create `ethobot_algorithms` package
-  - [ ] `PsoAlgorithm` class (wraps Pagmo2 PSO)
-  - [ ] `PsoNode` ROS2 node
-  - [ ] Parameter configuration (YAML)
-  - [ ] Unit tests
+- [x] Create `ethobot_algorithms` package
+  - [x] `PsoSolver` class (custom PSO implementation)
+  - [x] `pso_path_planning_node` ROS2 node
+  - [x] `swarm_visualizer_node` for RViz visualization
+  - [x] Launch file with RViz configuration
 
 ### PSO Parameters
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `population_size` | 50 | Number of particles |
+| `population_size` | 30 | Number of particles |
 | `max_iterations` | 100 | Maximum iterations |
-| `inertia_weight` | 0.7 | Velocity inertia |
-| `cognitive_coeff` | 1.5 | Personal best weight |
-| `social_coeff` | 1.5 | Global best weight |
+| `inertia_weight` | 0.7 | Velocity inertia (w) |
+| `cognitive_coeff` | 1.5 | Personal best weight (c1) |
+| `social_coeff` | 1.5 | Global best weight (c2) |
+| `max_velocity` | 0.5 | Maximum particle velocity |
 
-### Dependencies for This Phase
+### PSO Demo: 2D Path Planning
 
-```bash
-sudo apt install libpagmo-dev libeigen3-dev
+The demo finds an optimal position in a 2D space (12x12) that:
+- Minimizes distance to goal at (10, 10)
+- Avoids 4 circular obstacles
+
+**Fitness Function:**
 ```
+fitness = distance_to_goal + obstacle_penalty
+```
+
+Where `obstacle_penalty`:
+- 1000 if inside obstacle
+- 50 × clearance_distance if within 1.0 unit of obstacle edge
 
 ### Deliverables
 
-1. Working PSO algorithm node
-2. Configurable via ROS2 parameters
-3. Publishes SwarmState for visualization
-4. Unit tests with >80% coverage
+- [x] Working PSO algorithm node
+- [x] Configurable via ROS2 parameters
+- [x] Publishes SwarmState for visualization
+- [x] RViz visualization with markers
+- [ ] Unit tests (future)
 
 ---
 

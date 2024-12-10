@@ -16,12 +16,10 @@ Nature has solved optimization problems over millions of years. Bio-inspired alg
 
 ## Current Status
 
-This project is in active development. Current focus:
-
 - [x] Project structure and interfaces
-- [ ] PSO algorithm implementation
+- [x] PSO algorithm implementation
+- [x] RViz visualization
 - [ ] Ground robot integration (TurtleBot3)
-- [ ] Path planning scenario
 - [ ] Gazebo simulation
 
 See [docs/PLAN.md](docs/PLAN.md) for the full roadmap.
@@ -31,7 +29,9 @@ See [docs/PLAN.md](docs/PLAN.md) for the full roadmap.
 ```
 ethobot/
 ├── src/
-│   └── ethobot_interfaces/    # ROS2 messages, services, actions
+│   ├── ethobot_interfaces/    # ROS2 messages, services, actions
+│   ├── ethobot_core/          # Base classes and utilities
+│   └── ethobot_algorithms/    # Algorithm implementations (PSO, etc.)
 ├── config/                    # Parameter files (YAML)
 ├── launch/                    # Launch files
 ├── worlds/                    # Gazebo simulation worlds
@@ -102,15 +102,35 @@ source install/setup.bash
 
 ## Usage
 
+### Build
+
 ```bash
-# Source the workspace
-source install/setup.bash
+cd ~/projects/biorobot
+source /opt/ros/jazzy/setup.zsh  # or setup.bash
+colcon build --packages-select ethobot_interfaces ethobot_core ethobot_algorithms
+source install/setup.zsh
+```
 
-# Run PSO path planning (when implemented)
-ros2 launch ethobot path_planning.launch.py algorithm:=pso
+### Run PSO Demo
 
-# Visualize in RViz
-ros2 launch ethobot visualization.launch.py
+```bash
+ros2 launch ethobot_algorithms pso_demo.launch.py
+```
+
+This launches:
+- **pso_path_planning_node**: Runs PSO optimization to find goal position
+- **swarm_visualizer_node**: Publishes RViz markers for visualization
+- **static_transform_publisher**: Broadcasts the `map` TF frame
+- **rviz2**: Visualization with pre-configured display
+
+### Custom Parameters
+
+```bash
+ros2 launch ethobot_algorithms pso_demo.launch.py \
+    goal_x:=8.0 \
+    goal_y:=8.0 \
+    population_size:=50 \
+    max_iterations:=200
 ```
 
 ## Documentation
