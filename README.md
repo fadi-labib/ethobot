@@ -19,7 +19,7 @@ Nature has solved optimization problems over millions of years. Bio-inspired alg
 - [x] Project structure and interfaces
 - [x] PSO algorithm implementation
 - [x] RViz visualization
-- [ ] Ground robot integration (TurtleBot3)
+- [x] Ground robot integration (TurtleBot3)
 - [ ] Gazebo simulation
 
 See [docs/PLAN.md](docs/PLAN.md) for the full roadmap.
@@ -31,7 +31,8 @@ ethobot/
 ├── src/
 │   ├── ethobot_interfaces/    # ROS2 messages, services, actions
 │   ├── ethobot_core/          # Base classes and utilities
-│   └── ethobot_algorithms/    # Algorithm implementations (PSO, etc.)
+│   ├── ethobot_algorithms/    # Algorithm implementations (PSO, etc.)
+│   └── ethobot_robots/        # Robot controllers (TurtleBot3)
 ├── config/                    # Parameter files (YAML)
 ├── launch/                    # Launch files
 ├── worlds/                    # Gazebo simulation worlds
@@ -80,6 +81,8 @@ sudo apt install \
     libeigen3-dev \
     ros-jazzy-turtlebot3 \
     ros-jazzy-turtlebot3-msgs \
+    ros-jazzy-turtlebot3-fake-node \
+    ros-jazzy-turtlebot3-gazebo \
     ros-jazzy-nav2-bringup \
     ros-jazzy-ros-gz
 ```
@@ -107,7 +110,7 @@ source install/setup.bash
 ```bash
 cd ~/projects/biorobot
 source /opt/ros/jazzy/setup.zsh  # or setup.bash
-colcon build --packages-select ethobot_interfaces ethobot_core ethobot_algorithms
+colcon build --packages-select ethobot_interfaces ethobot_core ethobot_algorithms ethobot_robots
 source install/setup.zsh
 ```
 
@@ -132,6 +135,36 @@ ros2 launch ethobot_algorithms pso_demo.launch.py \
     population_size:=50 \
     max_iterations:=200
 ```
+
+### Test with TurtleBot3 (Fake Node)
+
+Test the PSO-to-robot integration without Gazebo:
+
+**Terminal 1 - TurtleBot3 Fake Node:**
+```bash
+export TURTLEBOT3_MODEL=burger
+ros2 launch turtlebot3_fake_node turtlebot3_fake_node.launch.py
+```
+
+**Terminal 2 - PSO Optimization:**
+```bash
+source install/setup.zsh
+ros2 run ethobot_algorithms pso_path_planning_node --ros-args \
+    -p goal_x:=2.0 -p goal_y:=2.0 -p max_iterations:=50
+```
+
+**Terminal 3 - Waypoint Follower:**
+```bash
+source install/setup.zsh
+ros2 run ethobot_robots waypoint_follower_node
+```
+
+**Terminal 4 - Monitor:**
+```bash
+ros2 topic echo /odom --field pose.pose.position
+```
+
+The robot will navigate to the PSO's optimal solution.
 
 ## Documentation
 

@@ -88,28 +88,42 @@ Where `obstacle_penalty`:
 
 ---
 
-## Phase 3: Ground Robot Simulation
+## Phase 3: Ground Robot Simulation (In Progress)
 
 **Goal**: Integrate TurtleBot3 in Gazebo for path planning demonstration.
 
-### Tasks
+### Completed
 
-- [ ] Create `ethobot_robots` package
-  - [ ] `RobotInterface` abstract class
-  - [ ] `GroundRobot` implementation (TurtleBot3)
-  - [ ] Velocity command translation
-  - [ ] Odometry subscription
+- [x] Create `ethobot_robots` package
+  - [x] `RobotController` class for differential drive
+  - [x] Velocity command publishing (`/cmd_vel`)
+  - [x] Odometry subscription (`/odom`)
+  - [x] Proportional control for waypoint navigation
+  - [x] `waypoint_follower_node` - connects PSO to robot
+
+### In Progress
 
 - [ ] Create `ethobot_simulation` package
   - [ ] Gazebo world (simple obstacles)
-  - [ ] Robot spawning service
-  - [ ] Simulation manager node
+  - [ ] Robot spawning
+  - [ ] Full simulation launch file
 
-- [ ] Path planning scenario
-  - [ ] Define start/goal positions
-  - [ ] Obstacle representation
-  - [ ] Fitness function (path length + obstacles)
-  - [ ] Launch file
+### Testing with Fake Node
+
+Before Gazebo integration, test with TurtleBot3 Fake Node:
+
+```bash
+# Terminal 1: Fake TurtleBot3
+export TURTLEBOT3_MODEL=burger
+ros2 launch turtlebot3_fake_node turtlebot3_fake_node.launch.py
+
+# Terminal 2: PSO optimization
+ros2 run ethobot_algorithms pso_path_planning_node --ros-args \
+    -p goal_x:=2.0 -p goal_y:=2.0 -p max_iterations:=50
+
+# Terminal 3: Waypoint follower
+ros2 run ethobot_robots waypoint_follower_node
+```
 
 ### Dependencies for This Phase
 
@@ -118,16 +132,18 @@ source /opt/ros/jazzy/setup.bash
 sudo apt install \
     ros-jazzy-turtlebot3 \
     ros-jazzy-turtlebot3-msgs \
+    ros-jazzy-turtlebot3-fake-node \
+    ros-jazzy-turtlebot3-gazebo \
     ros-jazzy-nav2-bringup \
     ros-jazzy-ros-gz
 ```
 
 ### Deliverables
 
-1. TurtleBot3 controlled by PSO path planning
-2. Gazebo simulation environment
-3. Launch files for easy startup
-4. Demo video/documentation
+1. [x] TurtleBot3 controlled by PSO output
+2. [ ] Gazebo simulation environment
+3. [ ] Launch files for easy startup
+4. [ ] Demo documentation
 
 ---
 
