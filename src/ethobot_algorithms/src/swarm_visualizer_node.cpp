@@ -35,11 +35,12 @@ public:
     goal_size_ = this->get_parameter("goal_size").as_double();
 
     // Obstacles (same as in pso_path_planning_node)
+    // Scaled for TurtleBot3 (4x4 meter space)
     obstacles_ = {
-      {3.0, 3.0, 1.5},
-      {7.0, 4.0, 1.0},
-      {5.0, 7.0, 1.2},
-      {2.0, 8.0, 0.8}
+      {1.0, 1.0, 0.3},
+      {2.0, 1.2, 0.25},
+      {1.5, 2.2, 0.28},
+      {0.6, 2.5, 0.2}
     };
 
     // Publisher

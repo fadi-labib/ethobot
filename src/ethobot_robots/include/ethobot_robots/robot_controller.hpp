@@ -6,7 +6,7 @@
 #include <string>
 
 #include "rclcpp/rclcpp.hpp"
-#include "geometry_msgs/msg/twist.hpp"
+#include "geometry_msgs/msg/twist_stamped.hpp"
 #include "geometry_msgs/msg/pose2_d.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "tf2/utils.h"
@@ -108,7 +108,7 @@ private:
   double normalize_angle(double angle) const;
 
   rclcpp::Node::SharedPtr node_;
-  rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
+  rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr cmd_vel_pub_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
 
   ControlParams params_;

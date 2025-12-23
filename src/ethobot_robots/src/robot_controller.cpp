@@ -10,8 +10,8 @@ RobotController::RobotController(
 {
   std::string ns = robot_namespace.empty() ? "" : "/" + robot_namespace;
 
-  // Create publisher for velocity commands
-  cmd_vel_pub_ = node_->create_publisher<geometry_msgs::msg::Twist>(
+  // Create publisher for velocity commands (TwistStamped for TurtleBot3 Gazebo)
+  cmd_vel_pub_ = node_->create_publisher<geometry_msgs::msg::TwistStamped>(
     ns + "/cmd_vel", 10);
 
   // Subscribe to odometry
@@ -94,30 +94,34 @@ void RobotController::update()
   }
 
   // Compute velocity commands using proportional control
-  geometry_msgs::msg::Twist cmd;
+  geometry_msgs::msg::TwistStamped cmd;
+  cmd.header.stamp = node_->now();
+  cmd.header.frame_id = "base_footprint";
 
   // If angle error is large, rotate in place first
   if (std::abs(angle_error) > params_.angle_tolerance) {
-    cmd.linear.x = 0.0;
-    cmd.angular.z = params_.kp_angular * angle_error;
+    cmd.twist.linear.x = 0.0;
+    cmd.twist.angular.z = params_.kp_angular * angle_error;
   } else {
     // Move toward goal
-    cmd.linear.x = params_.kp_linear * distance;
-    cmd.angular.z = params_.kp_angular * angle_error;
+    cmd.twist.linear.x = params_.kp_linear * distance;
+    cmd.twist.angular.z = params_.kp_angular * angle_error;
   }
 
   // Clamp velocities to limits
-  cmd.linear.x = std::clamp(cmd.linear.x, -params_.max_linear_velocity, params_.max_linear_velocity);
-  cmd.angular.z = std::clamp(cmd.angular.z, -params_.max_angular_velocity, params_.max_angular_velocity);
+  cmd.twist.linear.x = std::clamp(cmd.twist.linear.x, -params_.max_linear_velocity, params_.max_linear_velocity);
+  cmd.twist.angular.z = std::clamp(cmd.twist.angular.z, -params_.max_angular_velocity, params_.max_angular_velocity);
 
   cmd_vel_pub_->publish(cmd);
 }
 
 void RobotController::stop()
 {
-  geometry_msgs::msg::Twist cmd;
-  cmd.linear.x = 0.0;
-  cmd.angular.z = 0.0;
+  geometry_msgs::msg::TwistStamped cmd;
+  cmd.header.stamp = node_->now();
+  cmd.header.frame_id = "base_footprint";
+  cmd.twist.linear.x = 0.0;
+  cmd.twist.angular.z = 0.0;
   cmd_vel_pub_->publish(cmd);
 }
 

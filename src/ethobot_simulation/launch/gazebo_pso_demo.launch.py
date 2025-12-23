@@ -18,10 +18,10 @@ def generate_launch_description():
     # World file
     world_file = os.path.join(pkg_ethobot_simulation, 'worlds', 'ethobot_world.sdf')
 
-    # Launch arguments
-    use_sim_time = LaunchConfiguration('use_sim_time', default='true')
-    goal_x = LaunchConfiguration('goal_x', default='10.0')
-    goal_y = LaunchConfiguration('goal_y', default='10.0')
+    # Launch arguments - scaled for TurtleBot3 (4x4 meter space)
+    use_sim_time = LaunchConfiguration('use_sim_time', default='false')  # Use wall time for reliability
+    goal_x = LaunchConfiguration('goal_x', default='3.0')
+    goal_y = LaunchConfiguration('goal_y', default='3.0')
     robot_x = LaunchConfiguration('robot_x', default='0.0')
     robot_y = LaunchConfiguration('robot_y', default='0.0')
 
@@ -32,17 +32,17 @@ def generate_launch_description():
         # Declare launch arguments
         DeclareLaunchArgument(
             'use_sim_time',
-            default_value='true',
+            default_value='false',
             description='Use simulation time'
         ),
         DeclareLaunchArgument(
             'goal_x',
-            default_value='10.0',
+            default_value='3.0',
             description='Goal X position'
         ),
         DeclareLaunchArgument(
             'goal_y',
-            default_value='10.0',
+            default_value='3.0',
             description='Goal Y position'
         ),
         DeclareLaunchArgument(
@@ -66,7 +66,7 @@ def generate_launch_description():
             }.items()
         ),
 
-        # Spawn TurtleBot3 in Gazebo
+        # Spawn TurtleBot3 in Gazebo (includes its own ROS-Gazebo bridge)
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
                 os.path.join(pkg_turtlebot3_gazebo, 'launch', 'spawn_turtlebot3.launch.py')
@@ -77,33 +77,23 @@ def generate_launch_description():
             }.items()
         ),
 
-        # ROS-Gazebo bridge for cmd_vel and odometry
-        Node(
-            package='ros_gz_bridge',
-            executable='parameter_bridge',
-            name='ros_gz_bridge',
-            arguments=[
-                '/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.Twist',
-                '/odom@nav_msgs/msg/Odometry@gz.msgs.Odometry',
-                '/scan@sensor_msgs/msg/LaserScan@gz.msgs.LaserScan',
-                '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
-            ],
-            output='screen'
-        ),
-
-        # PSO Path Planning Node
+        # PSO Path Planning Node (scaled for 4x4 meter space)
+        # PSO finds optimal WAYPOINT to avoid obstacles on path from start to goal
         Node(
             package='ethobot_algorithms',
             executable='pso_path_planning_node',
             name='pso_path_planning',
             output='screen',
             parameters=[{
-                'use_sim_time': use_sim_time,
+                'start_x': robot_x,
+                'start_y': robot_y,
                 'goal_x': goal_x,
                 'goal_y': goal_y,
-                'population_size': 30,
-                'max_iterations': 100,
-                'publish_rate_hz': 2.0,
+                'population_size': 20,
+                'max_iterations': 50,
+                'publish_rate_hz': 5.0,
+                'search_space_min': 0.0,
+                'search_space_max': 4.0,
             }]
         ),
 
@@ -114,31 +104,42 @@ def generate_launch_description():
             name='swarm_visualizer',
             output='screen',
             parameters=[{
-                'use_sim_time': use_sim_time,
                 'goal_x': goal_x,
                 'goal_y': goal_y,
             }]
         ),
 
         # Waypoint Follower Node
+        # Navigates: start → PSO waypoint → final goal
         Node(
             package='ethobot_robots',
             executable='waypoint_follower_node',
             name='waypoint_follower',
             output='screen',
             parameters=[{
-                'use_sim_time': use_sim_time,
-                'goal_tolerance': 0.3,
+                'goal_tolerance': 0.2,
                 'max_linear_velocity': 0.15,
                 'max_angular_velocity': 1.5,
+                'wait_for_completion': True,
+                'final_goal_x': goal_x,
+                'final_goal_y': goal_y,
             }]
         ),
 
-        # Static transform for map frame
+        # Static transform: map -> odom (connects TF tree)
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
-            name='map_broadcaster',
-            arguments=['0', '0', '0', '0', '0', '0', 'world', 'map']
+            name='map_to_odom',
+            arguments=['0', '0', '0', '0', '0', '0', 'map', 'odom']
+        ),
+
+        # RViz for particle visualization
+        Node(
+            package='rviz2',
+            executable='rviz2',
+            name='rviz2',
+            arguments=['-d', os.path.join(pkg_ethobot_simulation, 'config', 'gazebo_pso.rviz')],
+            output='screen'
         ),
     ])

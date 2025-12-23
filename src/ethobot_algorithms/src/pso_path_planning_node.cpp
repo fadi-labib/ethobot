@@ -11,14 +11,14 @@
 using namespace std::chrono_literals;
 
 /**
- * @brief 2D Path Planning Demo using PSO
+ * @brief PSO Waypoint Optimization for Path Planning
  *
- * Problem: Find the optimal (x, y) position that:
- *   1. Minimizes distance to goal
- *   2. Avoids circular obstacles
+ * PSO finds the OPTIMAL WAYPOINT that minimizes:
+ *   total_path_length = dist(start, waypoint) + dist(waypoint, goal)
+ *   + obstacle penalties for waypoint proximity
  *
- * This is a simplified demo. In real path planning, you'd optimize
- * a sequence of waypoints, not just a single point.
+ * This is useful when obstacles block the direct path.
+ * The robot will: start → waypoint → goal
  */
 class PsoPathPlanningNode : public rclcpp::Node
 {
@@ -26,19 +26,27 @@ public:
   PsoPathPlanningNode()
   : Node("pso_path_planning")
   {
-    // Declare parameters
-    this->declare_parameter("goal_x", 10.0);
-    this->declare_parameter("goal_y", 10.0);
+    // Declare configurable parameters
+    this->declare_parameter("start_x", 0.0);
+    this->declare_parameter("start_y", 0.0);
+    this->declare_parameter("goal_x", 3.0);
+    this->declare_parameter("goal_y", 3.0);
     this->declare_parameter("population_size", 30);
-    this->declare_parameter("max_iterations", 100);
-    this->declare_parameter("publish_rate_hz", 10.0);
+    this->declare_parameter("max_iterations", 50);
+    this->declare_parameter("publish_rate_hz", 5.0);
+    this->declare_parameter("search_space_min", 0.0);
+    this->declare_parameter("search_space_max", 4.0);
 
     // Get parameters
+    start_x_ = this->get_parameter("start_x").as_double();
+    start_y_ = this->get_parameter("start_y").as_double();
     goal_x_ = this->get_parameter("goal_x").as_double();
     goal_y_ = this->get_parameter("goal_y").as_double();
     int pop_size = this->get_parameter("population_size").as_int();
     max_iterations_ = this->get_parameter("max_iterations").as_int();
     double rate = this->get_parameter("publish_rate_hz").as_double();
+    double space_min = this->get_parameter("search_space_min").as_double();
+    double space_max = this->get_parameter("search_space_max").as_double();
 
     // Create publishers
     swarm_state_pub_ = this->create_publisher<ethobot_interfaces::msg::SwarmState>(
@@ -49,11 +57,15 @@ public:
     // Setup obstacles (circular obstacles)
     // Format: {x, y, radius}
     obstacles_ = {
-      {3.0, 3.0, 1.5},
-      {7.0, 4.0, 1.0},
-      {5.0, 7.0, 1.2},
-      {2.0, 8.0, 0.8}
+      {1.0, 1.0, 0.3},
+      {2.0, 1.2, 0.25},
+      {1.5, 2.2, 0.28},
+      {0.6, 2.5, 0.2}
     };
+
+    // Check if direct path is blocked
+    direct_path_length_ = std::sqrt(
+      std::pow(goal_x_ - start_x_, 2) + std::pow(goal_y_ - start_y_, 2));
 
     // Setup PSO
     ethobot_algorithms::PsoParams params;
@@ -61,28 +73,30 @@ public:
     params.inertia_weight = 0.7;
     params.cognitive_coeff = 1.5;
     params.social_coeff = 1.5;
-    params.max_velocity = 0.5;
+    params.max_velocity = 0.3;
 
     pso_ = std::make_unique<ethobot_algorithms::PsoSolver>(params);
 
-    // Define the optimization problem
+    // Define the optimization problem - find optimal WAYPOINT
     ethobot_core::Problem problem;
-    problem.dimensions = 2;  // x, y
-    problem.lower_bounds = {0.0, 0.0};
-    problem.upper_bounds = {12.0, 12.0};
+    problem.dimensions = 2;  // waypoint (x, y)
+    problem.lower_bounds = {space_min, space_min};
+    problem.upper_bounds = {space_max, space_max};
     problem.minimize = true;
 
-    // Fitness function: distance to goal + penalty for obstacles
-    problem.fitness_function = [this](const std::vector<double> & pos) {
-        return this->compute_fitness(pos);
+    // Fitness function: optimize waypoint for shortest safe path
+    problem.fitness_function = [this](const std::vector<double> & waypoint) {
+        return this->compute_waypoint_fitness(waypoint);
       };
 
     pso_->initialize(problem);
 
-    RCLCPP_INFO(this->get_logger(), "PSO Path Planning initialized");
+    RCLCPP_INFO(this->get_logger(), "=== PSO Waypoint Optimization ===");
+    RCLCPP_INFO(this->get_logger(), "Start: (%.1f, %.1f)", start_x_, start_y_);
     RCLCPP_INFO(this->get_logger(), "Goal: (%.1f, %.1f)", goal_x_, goal_y_);
+    RCLCPP_INFO(this->get_logger(), "Direct path length: %.2f", direct_path_length_);
     RCLCPP_INFO(this->get_logger(), "Obstacles: %zu", obstacles_.size());
-    RCLCPP_INFO(this->get_logger(), "Population: %d, Max iterations: %d", pop_size, max_iterations_);
+    RCLCPP_INFO(this->get_logger(), "PSO will find optimal waypoint to avoid obstacles");
 
     // Create timer for PSO steps
     auto period = std::chrono::duration<double>(1.0 / rate);
@@ -95,13 +109,25 @@ private:
   void timer_callback()
   {
     if (iteration_ >= static_cast<std::size_t>(max_iterations_)) {
-      // Optimization complete
+      // Optimization complete - publish final state and stop
       if (!completed_) {
         completed_ = true;
-        auto result = pso_->get_best_solution();
-        RCLCPP_INFO(this->get_logger(),
-          "Optimization complete! Best position: (%.3f, %.3f), Fitness: %.4f",
-          result[0], result[1], pso_->get_best_fitness());
+        auto waypoint = pso_->get_best_solution();
+        double fitness = pso_->get_best_fitness();
+
+        RCLCPP_INFO(this->get_logger(), "=== OPTIMIZATION COMPLETE ===");
+        RCLCPP_INFO(this->get_logger(), "Optimal waypoint: (%.3f, %.3f)", waypoint[0], waypoint[1]);
+        RCLCPP_INFO(this->get_logger(), "Path fitness: %.4f", fitness);
+        RCLCPP_INFO(this->get_logger(), "Route: (%.1f,%.1f) → (%.2f,%.2f) → (%.1f,%.1f)",
+          start_x_, start_y_, waypoint[0], waypoint[1], goal_x_, goal_y_);
+
+        // Publish FINAL swarm state
+        auto swarm_state = pso_->get_swarm_state();
+        swarm_state.header.frame_id = "map";
+        swarm_state.header.stamp = this->now();
+        swarm_state.iteration = static_cast<uint32_t>(max_iterations_);
+        swarm_state.max_iterations = static_cast<uint32_t>(max_iterations_);
+        swarm_state_pub_->publish(swarm_state);
       }
       return;
     }
@@ -113,6 +139,7 @@ private:
     // Publish swarm state
     auto swarm_state = pso_->get_swarm_state();
     swarm_state.header.frame_id = "map";
+    swarm_state.header.stamp = this->now();
     swarm_state.iteration = static_cast<uint32_t>(iteration_);
     swarm_state.max_iterations = static_cast<uint32_t>(max_iterations_);
     swarm_state_pub_->publish(swarm_state);
@@ -128,46 +155,93 @@ private:
     if (iteration_ % 10 == 0) {
       auto best = pso_->get_best_solution();
       RCLCPP_INFO(this->get_logger(),
-        "Iteration %zu/%d: Best (%.2f, %.2f), Fitness: %.4f",
+        "Iteration %zu/%d: Waypoint (%.2f, %.2f), Fitness: %.4f",
         iteration_, max_iterations_, best[0], best[1], pso_->get_best_fitness());
     }
   }
 
   /**
-   * @brief Compute fitness for a position
+   * @brief Compute fitness for a waypoint
    *
-   * Lower is better:
-   *   - Distance to goal
-   *   - High penalty if inside obstacle
+   * Fitness = path_length + obstacle_penalty
+   *
+   * path_length = dist(start, waypoint) + dist(waypoint, goal)
+   * obstacle_penalty = high if waypoint is near/inside obstacles
+   *
+   * Lower fitness = better waypoint
    */
-  double compute_fitness(const std::vector<double> & pos)
+  double compute_waypoint_fitness(const std::vector<double> & waypoint)
   {
-    double x = pos[0];
-    double y = pos[1];
+    double wx = waypoint[0];
+    double wy = waypoint[1];
 
-    // Distance to goal
-    double dist_to_goal = std::sqrt(
-      std::pow(x - goal_x_, 2) + std::pow(y - goal_y_, 2));
+    // Path length through waypoint
+    double dist_start_to_wp = std::sqrt(
+      std::pow(wx - start_x_, 2) + std::pow(wy - start_y_, 2));
+    double dist_wp_to_goal = std::sqrt(
+      std::pow(goal_x_ - wx, 2) + std::pow(goal_y_ - wy, 2));
+    double total_path_length = dist_start_to_wp + dist_wp_to_goal;
 
-    // Obstacle penalty
+    // Obstacle penalty for waypoint
     double obstacle_penalty = 0.0;
     for (const auto & obs : obstacles_) {
       double ox = obs[0];
       double oy = obs[1];
       double radius = obs[2];
 
-      double dist_to_obs = std::sqrt(std::pow(x - ox, 2) + std::pow(y - oy, 2));
+      double dist_to_obs = std::sqrt(std::pow(wx - ox, 2) + std::pow(wy - oy, 2));
 
       if (dist_to_obs < radius) {
         // Inside obstacle - very heavy penalty
-        obstacle_penalty += 1000.0;
-      } else if (dist_to_obs < radius + 1.0) {
-        // Close to obstacle - penalty (encourages clearance)
-        obstacle_penalty += 50.0 * (radius + 1.0 - dist_to_obs);
+        obstacle_penalty += 100.0;
+      } else if (dist_to_obs < radius + 0.3) {
+        // Close to obstacle - penalty (robot needs clearance)
+        obstacle_penalty += 30.0 * (radius + 0.3 - dist_to_obs);
       }
+
+      // Also penalize if path segments cross near obstacles
+      obstacle_penalty += check_path_segment_penalty(start_x_, start_y_, wx, wy, obs);
+      obstacle_penalty += check_path_segment_penalty(wx, wy, goal_x_, goal_y_, obs);
     }
 
-    return dist_to_goal + obstacle_penalty;
+    return total_path_length + obstacle_penalty;
+  }
+
+  /**
+   * @brief Check if a path segment passes too close to an obstacle
+   */
+  double check_path_segment_penalty(double x1, double y1, double x2, double y2,
+                                     const std::vector<double> & obs)
+  {
+    double ox = obs[0];
+    double oy = obs[1];
+    double radius = obs[2];
+
+    // Calculate closest point on line segment to obstacle center
+    double dx = x2 - x1;
+    double dy = y2 - y1;
+    double seg_len_sq = dx * dx + dy * dy;
+
+    if (seg_len_sq < 0.0001) return 0.0;  // Degenerate segment
+
+    // Parameter t for closest point on line
+    double t = std::max(0.0, std::min(1.0,
+      ((ox - x1) * dx + (oy - y1) * dy) / seg_len_sq));
+
+    // Closest point on segment
+    double closest_x = x1 + t * dx;
+    double closest_y = y1 + t * dy;
+
+    // Distance from obstacle center to closest point
+    double dist = std::sqrt(std::pow(closest_x - ox, 2) + std::pow(closest_y - oy, 2));
+
+    // Penalty if path passes through or near obstacle
+    double clearance = 0.2;  // Robot radius + safety margin
+    if (dist < radius + clearance) {
+      return 50.0 * (radius + clearance - dist);
+    }
+
+    return 0.0;
   }
 
   // Publishers
@@ -180,10 +254,14 @@ private:
   // PSO solver
   std::unique_ptr<ethobot_algorithms::PsoSolver> pso_;
 
-  // Problem definition
+  // Configurable parameters
+  double start_x_;
+  double start_y_;
   double goal_x_;
   double goal_y_;
   int max_iterations_;
+  double direct_path_length_;
+
   std::vector<std::vector<double>> obstacles_;  // {x, y, radius}
 
   bool completed_ = false;
