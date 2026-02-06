@@ -69,6 +69,9 @@ Thumbs.db
 credentials.json
 secrets.yaml
 
+# Serena
+.serena/
+
 # Temporary files
 *.tmp
 *.temp

@@ -1,6 +1,7 @@
 #ifndef ETHOBOT_CORE__ALGORITHM_BASE_HPP_
 #define ETHOBOT_CORE__ALGORITHM_BASE_HPP_
 
+#include <chrono>
 #include <functional>
 #include <limits>
 #include <memory>
