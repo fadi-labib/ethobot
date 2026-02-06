@@ -99,4 +99,25 @@ ament_export_dependencies(
   tf2_geometry_msgs
 )
 
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  find_package(ament_cmake_gtest REQUIRED)
+  ament_lint_auto_find_test_dependencies()
+
+  # Unit tests
+  ament_add_gtest(robot_controller_test
+    test/robot_controller_test.cpp
+  )
+  target_include_directories(robot_controller_test PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  )
+  target_link_libraries(robot_controller_test robot_controller)
+  ament_target_dependencies(robot_controller_test
+    rclcpp
+    ethobot_interfaces
+    geometry_msgs
+    nav_msgs
+  )
+endif()
+
 ament_package()

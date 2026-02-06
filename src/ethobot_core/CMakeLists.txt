@@ -52,7 +52,18 @@ ament_export_dependencies(rclcpp ethobot_interfaces geometry_msgs)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
+  find_package(ament_cmake_gtest REQUIRED)
   ament_lint_auto_find_test_dependencies()
+
+  # Unit tests
+  ament_add_gtest(algorithm_base_test
+    test/algorithm_base_test.cpp
+  )
+  target_link_libraries(algorithm_base_test ${PROJECT_NAME})
+  ament_target_dependencies(algorithm_base_test
+    rclcpp
+    ethobot_interfaces
+  )
 endif()
 
 ament_package()

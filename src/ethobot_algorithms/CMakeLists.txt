@@ -113,7 +113,22 @@ ament_export_dependencies(rclcpp ethobot_core ethobot_interfaces geometry_msgs)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
+  find_package(ament_cmake_gtest REQUIRED)
   ament_lint_auto_find_test_dependencies()
+
+  # Unit tests
+  ament_add_gtest(pso_solver_test
+    test/pso_solver_test.cpp
+  )
+  target_include_directories(pso_solver_test PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  )
+  target_link_libraries(pso_solver_test pso_solver)
+  ament_target_dependencies(pso_solver_test
+    rclcpp
+    ethobot_core
+    ethobot_interfaces
+  )
 endif()
 
 ament_package()
