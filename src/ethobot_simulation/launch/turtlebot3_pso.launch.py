@@ -100,11 +100,11 @@ def generate_launch_description():
             }]
         ),
 
-        # Static transform for map frame
+        # Static transform: map -> odom (robot spawns at origin in empty_world)
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
-            name='map_broadcaster',
-            arguments=['0', '0', '0', '0', '0', '0', 'odom', 'map']
+            name='map_to_odom',
+            arguments=['0', '0', '0', '0', '0', '0', 'map', 'odom']
         ),
     ])

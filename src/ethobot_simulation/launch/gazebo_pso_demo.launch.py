@@ -52,11 +52,6 @@ def generate_launch_description():
     return LaunchDescription([
         # Declare launch arguments
         DeclareLaunchArgument(
-            'use_sim_time',
-            default_value='false',
-            description='Use simulation time'
-        ),
-        DeclareLaunchArgument(
             'goal_x',
             default_value='3.0',
             description='Goal X position'
