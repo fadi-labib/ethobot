@@ -176,27 +176,35 @@ ament_package()
 
 ## ROS2 Interfaces
 
-### Topics
+### Topics (active)
 
 | Topic | Type | Publisher | Description |
 |-------|------|-----------|-------------|
-| `/ethobot/swarm_state` | SwarmState | Algorithm node | Swarm visualization |
-| `/ethobot/algorithm_status` | AlgorithmStatus | Algorithm node | Progress updates |
-| `/ethobot/<robot>/cmd_vel` | geometry_msgs/Twist | Algorithm node | Robot velocity |
-| `/ethobot/<robot>/odom` | nav_msgs/Odometry | Robot/Sim | Robot odometry |
+| `ethobot/swarm_state` | SwarmState | pso_path_planning | Swarm state + global best |
+| `ethobot/algorithm_status` | AlgorithmStatus | pso_path_planning | Progress updates |
+| `ethobot/visualization` | visualization_msgs/MarkerArray | swarm_visualizer | RViz markers |
+| `<ns>/cmd_vel` | geometry_msgs/TwistStamped | waypoint_follower | Robot velocity |
+| `<ns>/odom` | nav_msgs/Odometry | robot/sim | Robot odometry (subscribed) |
 
-### Services
+`<ns>` is the robot namespace (empty by default → `/cmd_vel`, `/odom`).
+TurtleBot3's Gazebo diff-drive requires `TwistStamped` (not `Twist`) on cmd_vel.
 
-| Service | Type | Provider | Description |
-|---------|------|----------|-------------|
-| `/ethobot/spawn_robot` | SpawnRobot | Simulation manager | Spawn robot |
-| `/ethobot/set_params` | SetAlgorithmParams | Algorithm node | Runtime tuning |
+### Services (planned)
 
-### Actions
+Defined in `ethobot_interfaces` but not yet implemented by any node.
 
-| Action | Type | Server | Description |
-|--------|------|--------|-------------|
-| `/ethobot/optimize` | RunOptimization | Algorithm node | Run optimization |
+| Service | Type | Description |
+|---------|------|-------------|
+| `/ethobot/spawn_robot` | SpawnRobot | Spawn robot |
+| `/ethobot/set_params` | SetAlgorithmParams | Runtime tuning |
+
+### Actions (planned)
+
+Defined in `ethobot_interfaces` but not yet implemented by any node.
+
+| Action | Type | Description |
+|--------|------|-------------|
+| `/ethobot/optimize` | RunOptimization | Run optimization |
 
 ## Git Workflow
 

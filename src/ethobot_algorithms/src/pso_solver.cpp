@@ -28,6 +28,14 @@
 namespace ethobot_algorithms
 {
 
+namespace
+{
+// A step that improves the global best by less than this counts as stagnant.
+constexpr double kConvergenceThreshold = 1e-4;
+// Number of consecutive stagnant steps before we declare convergence.
+constexpr std::size_t kConvergencePatience = 10;
+}  // namespace
+
 PsoSolver::PsoSolver(const PsoParams & params)
 : AlgorithmBase("PSO"),
   params_(params),
@@ -42,6 +50,8 @@ void PsoSolver::initialize(const ethobot_core::Problem & problem)
   iteration_ = 0;
   best_fitness_ = std::numeric_limits<double>::infinity();
   global_best_fitness_ = std::numeric_limits<double>::infinity();
+  stagnation_count_ = 0;
+  converged_ = false;
 
   const std::size_t dims = problem_.dimensions;
 
@@ -82,6 +92,7 @@ void PsoSolver::initialize(const ethobot_core::Problem & problem)
 void PsoSolver::step()
 {
   const std::size_t dims = problem_.dimensions;
+  const double fitness_before = global_best_fitness_;
 
   for (auto & particle : particles_) {
     // Update velocity for each dimension
@@ -132,6 +143,14 @@ void PsoSolver::step()
   best_fitness_ = global_best_fitness_;
   best_solution_ = global_best_position_;
   ++iteration_;
+
+  // Convergence: count consecutive steps with negligible improvement.
+  if (fitness_before - global_best_fitness_ < kConvergenceThreshold) {
+    ++stagnation_count_;
+  } else {
+    stagnation_count_ = 0;
+  }
+  converged_ = stagnation_count_ >= kConvergencePatience;
 }
 
 void PsoSolver::reset()
@@ -142,6 +161,8 @@ void PsoSolver::reset()
   iteration_ = 0;
   best_fitness_ = std::numeric_limits<double>::infinity();
   best_solution_.clear();
+  stagnation_count_ = 0;
+  converged_ = false;
 }
 
 ethobot_interfaces::msg::SwarmState PsoSolver::get_swarm_state() const
@@ -150,7 +171,7 @@ ethobot_interfaces::msg::SwarmState PsoSolver::get_swarm_state() const
   state.header.stamp = rclcpp::Clock().now();
   state.iteration = static_cast<uint32_t>(iteration_);
   state.global_best_fitness = global_best_fitness_;
-  state.converged = false;  // Could add convergence detection
+  state.converged = converged_;
 
   // Set global best position (assuming 2D or 3D)
   if (!global_best_position_.empty()) {

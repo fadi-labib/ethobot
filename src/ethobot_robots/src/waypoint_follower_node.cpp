@@ -60,6 +60,10 @@ public:
     // TODO(fadi): replace with a proper tf2 lookup if rotated spawns are needed.
     this->declare_parameter("spawn_x", 0.0);
     this->declare_parameter("spawn_y", 0.0);
+    // Abort a navigation phase if the goal is not reached within this many
+    // seconds. The controller has no reactive obstacle avoidance, so a blocked
+    // path would otherwise hang the state machine forever.
+    this->declare_parameter("nav_timeout_sec", 60.0);
 
     robot_namespace_ = this->get_parameter("robot_namespace").as_string();
     control_rate_ = this->get_parameter("control_rate_hz").as_double();
@@ -67,6 +71,7 @@ public:
     final_goal_y_ = this->get_parameter("final_goal_y").as_double();
     spawn_x_ = this->get_parameter("spawn_x").as_double();
     spawn_y_ = this->get_parameter("spawn_y").as_double();
+    nav_timeout_sec_ = this->get_parameter("nav_timeout_sec").as_double();
 
     // Store params for later initialization
     params_.goal_tolerance = this->get_parameter("goal_tolerance").as_double();
@@ -141,6 +146,7 @@ private:
           // Direct path is clear — skip the detour and head straight to goal.
           nav_state_ = NavState::TO_GOAL;
           controller_->set_goal(final_goal_x_ - spawn_x_, final_goal_y_ - spawn_y_);
+          phase_start_time_ = this->now();
           RCLCPP_INFO(this->get_logger(), " ");
           RCLCPP_INFO(this->get_logger(),
             ">>> Waypoint adds no value (direct path) — skipping to goal <<<");
@@ -150,6 +156,7 @@ private:
           // Navigate to waypoint first (convert map-frame waypoint to odom).
           nav_state_ = NavState::TO_WAYPOINT;
           controller_->set_goal(pso_waypoint_x_ - spawn_x_, pso_waypoint_y_ - spawn_y_);
+          phase_start_time_ = this->now();
           RCLCPP_INFO(this->get_logger(), " ");
           RCLCPP_INFO(this->get_logger(),
             ">>> PHASE 1: Navigating to waypoint (%.2f, %.2f) [map] <<<",
@@ -166,9 +173,12 @@ private:
           // Now go to final goal (convert map-frame goal to odom).
           nav_state_ = NavState::TO_GOAL;
           controller_->set_goal(final_goal_x_ - spawn_x_, final_goal_y_ - spawn_y_);
+          phase_start_time_ = this->now();
           RCLCPP_INFO(this->get_logger(), " ");
           RCLCPP_INFO(this->get_logger(), ">>> PHASE 2: Navigating to goal (%.2f, %.2f) [map] <<<",
             final_goal_x_, final_goal_y_);
+        } else if (phase_timed_out()) {
+          abort_navigation("PHASE 1 (to waypoint)");
         }
         break;
 
@@ -180,6 +190,8 @@ private:
           RCLCPP_INFO(this->get_logger(), " ");
           RCLCPP_INFO(this->get_logger(), "=== NAVIGATION COMPLETE ===");
           RCLCPP_INFO(this->get_logger(), "Final position: (%.2f, %.2f)", pose.x, pose.y);
+        } else if (phase_timed_out()) {
+          abort_navigation("PHASE 2 (to goal)");
         }
         break;
 
@@ -218,6 +230,19 @@ private:
     return (through - direct) < tol;
   }
 
+  bool phase_timed_out() const
+  {
+    return (this->now() - phase_start_time_).seconds() > nav_timeout_sec_;
+  }
+
+  void abort_navigation(const char * phase)
+  {
+    controller_->stop();
+    nav_state_ = NavState::COMPLETE;
+    RCLCPP_ERROR(this->get_logger(),
+      "Navigation timed out in %s after %.1f s — aborting", phase, nav_timeout_sec_);
+  }
+
   enum class NavState
   {
     WAITING,
@@ -238,6 +263,8 @@ private:
   double final_goal_y_;
   double spawn_x_;
   double spawn_y_;
+  double nav_timeout_sec_;
+  rclcpp::Time phase_start_time_;
 
   // PSO state
   uint32_t current_iteration_ = 0;

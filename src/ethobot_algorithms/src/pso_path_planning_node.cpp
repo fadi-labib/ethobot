@@ -169,6 +169,7 @@ private:
           start_x_, start_y_, waypoint[0], waypoint[1], goal_x_, goal_y_);
 
         publish_swarm_state(current);
+        timer_->cancel();  // optimization done; stop the periodic callback
       }
       return;
     }

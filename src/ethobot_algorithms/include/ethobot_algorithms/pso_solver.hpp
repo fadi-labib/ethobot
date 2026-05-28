@@ -114,6 +114,10 @@ private:
   std::vector<double> global_best_position_;
   double global_best_fitness_;
 
+  // Convergence tracking: consecutive steps with negligible improvement.
+  std::size_t stagnation_count_ = 0;
+  bool converged_ = false;
+
   std::mt19937 rng_;
   std::uniform_real_distribution<double> uniform_dist_{0.0, 1.0};
 
