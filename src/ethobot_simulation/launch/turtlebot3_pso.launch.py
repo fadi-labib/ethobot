@@ -97,6 +97,8 @@ def generate_launch_description():
                 'goal_tolerance': 0.2,
                 'max_linear_velocity': 0.15,
                 'max_angular_velocity': 1.5,
+                'final_goal_x': goal_x,
+                'final_goal_y': goal_y,
             }]
         ),
 

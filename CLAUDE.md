@@ -33,17 +33,20 @@ ament_uncrustify src/
 ```
 ethobot/
 ├── src/
-│   └── ethobot_interfaces/    # Messages, services, actions (ACTIVE)
-├── config/                    # YAML parameters
-├── launch/                    # Launch files
-├── worlds/                    # Gazebo worlds
-├── models/                    # Robot URDF/SDF
+│   ├── ethobot_interfaces/    # Messages, services, actions
+│   ├── ethobot_core/          # AlgorithmBase optimization abstraction
+│   ├── ethobot_algorithms/    # PSO solver, path-planning node, swarm visualizer
+│   ├── ethobot_robots/        # TurtleBot3 controller + waypoint follower
+│   └── ethobot_simulation/    # Gazebo world, RViz config, launch files
 ├── docs/                      # Documentation
 ├── scripts/                   # Utilities
 ├── CLAUDE.md                  # This file
 ├── README.md                  # Project overview
 └── LICENSE                    # MIT
 ```
+
+Each package carries its own `include/`, `src/`, `test/`, and (where relevant)
+`config/` and `launch/` directories.
 
 ## Coding Standards
 

@@ -116,7 +116,7 @@ private:
     // Check if PSO is complete
     if (current_iteration_ >= max_iterations_ && !pso_complete_) {
       pso_complete_ = true;
-      RCLCPP_INFO(this->get_logger(), "");
+      RCLCPP_INFO(this->get_logger(), " ");
       RCLCPP_INFO(this->get_logger(), "=== PSO COMPLETE ===");
       RCLCPP_INFO(this->get_logger(), "Optimal waypoint: (%.2f, %.2f)",
         pso_waypoint_x_, pso_waypoint_y_);
@@ -141,7 +141,7 @@ private:
           // Direct path is clear — skip the detour and head straight to goal.
           nav_state_ = NavState::TO_GOAL;
           controller_->set_goal(final_goal_x_ - spawn_x_, final_goal_y_ - spawn_y_);
-          RCLCPP_INFO(this->get_logger(), "");
+          RCLCPP_INFO(this->get_logger(), " ");
           RCLCPP_INFO(this->get_logger(),
             ">>> Waypoint adds no value (direct path) — skipping to goal <<<");
           RCLCPP_INFO(this->get_logger(), ">>> PHASE 2: Navigating to goal (%.2f, %.2f) [map] <<<",
@@ -150,7 +150,7 @@ private:
           // Navigate to waypoint first (convert map-frame waypoint to odom).
           nav_state_ = NavState::TO_WAYPOINT;
           controller_->set_goal(pso_waypoint_x_ - spawn_x_, pso_waypoint_y_ - spawn_y_);
-          RCLCPP_INFO(this->get_logger(), "");
+          RCLCPP_INFO(this->get_logger(), " ");
           RCLCPP_INFO(this->get_logger(),
             ">>> PHASE 1: Navigating to waypoint (%.2f, %.2f) [map] <<<",
             pso_waypoint_x_, pso_waypoint_y_);
@@ -166,7 +166,7 @@ private:
           // Now go to final goal (convert map-frame goal to odom).
           nav_state_ = NavState::TO_GOAL;
           controller_->set_goal(final_goal_x_ - spawn_x_, final_goal_y_ - spawn_y_);
-          RCLCPP_INFO(this->get_logger(), "");
+          RCLCPP_INFO(this->get_logger(), " ");
           RCLCPP_INFO(this->get_logger(), ">>> PHASE 2: Navigating to goal (%.2f, %.2f) [map] <<<",
             final_goal_x_, final_goal_y_);
         }
@@ -177,7 +177,7 @@ private:
         if (controller_->goal_reached()) {
           nav_state_ = NavState::COMPLETE;
           auto pose = controller_->get_pose();
-          RCLCPP_INFO(this->get_logger(), "");
+          RCLCPP_INFO(this->get_logger(), " ");
           RCLCPP_INFO(this->get_logger(), "=== NAVIGATION COMPLETE ===");
           RCLCPP_INFO(this->get_logger(), "Final position: (%.2f, %.2f)", pose.x, pose.y);
         }
