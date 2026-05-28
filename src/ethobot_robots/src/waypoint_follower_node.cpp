@@ -1,3 +1,25 @@
+// Copyright 2026 Fadi Labib
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+// THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
+
+#include <cmath>
 #include <memory>
 #include <vector>
 
@@ -30,15 +52,21 @@ public:
     this->declare_parameter("goal_tolerance", 0.2);
     this->declare_parameter("max_linear_velocity", 0.22);
     this->declare_parameter("max_angular_velocity", 2.0);
-    this->declare_parameter("wait_for_completion", true);
     this->declare_parameter("final_goal_x", 3.0);
     this->declare_parameter("final_goal_y", 3.0);
+    // Robot spawn pose in the map frame. The controller works in odom (whose
+    // origin coincides with the spawn pose for TurtleBot3), so we subtract
+    // this from map-frame waypoints before handing them to the controller.
+    // TODO(fadi): replace with a proper tf2 lookup if rotated spawns are needed.
+    this->declare_parameter("spawn_x", 0.0);
+    this->declare_parameter("spawn_y", 0.0);
 
     robot_namespace_ = this->get_parameter("robot_namespace").as_string();
     control_rate_ = this->get_parameter("control_rate_hz").as_double();
-    wait_for_completion_ = this->get_parameter("wait_for_completion").as_bool();
     final_goal_x_ = this->get_parameter("final_goal_x").as_double();
     final_goal_y_ = this->get_parameter("final_goal_y").as_double();
+    spawn_x_ = this->get_parameter("spawn_x").as_double();
+    spawn_y_ = this->get_parameter("spawn_y").as_double();
 
     // Store params for later initialization
     params_.goal_tolerance = this->get_parameter("goal_tolerance").as_double();
@@ -90,7 +118,8 @@ private:
       pso_complete_ = true;
       RCLCPP_INFO(this->get_logger(), "");
       RCLCPP_INFO(this->get_logger(), "=== PSO COMPLETE ===");
-      RCLCPP_INFO(this->get_logger(), "Optimal waypoint: (%.2f, %.2f)", pso_waypoint_x_, pso_waypoint_y_);
+      RCLCPP_INFO(this->get_logger(), "Optimal waypoint: (%.2f, %.2f)",
+        pso_waypoint_x_, pso_waypoint_y_);
       RCLCPP_INFO(this->get_logger(), "Route: START → (%.2f, %.2f) → GOAL (%.2f, %.2f)",
         pso_waypoint_x_, pso_waypoint_y_, final_goal_x_, final_goal_y_);
     }
@@ -105,25 +134,40 @@ private:
     // State machine for navigation
     switch (nav_state_) {
       case NavState::WAITING:
-        // Start navigation to waypoint
-        nav_state_ = NavState::TO_WAYPOINT;
-        controller_->set_goal(pso_waypoint_x_, pso_waypoint_y_);
-        RCLCPP_INFO(this->get_logger(), "");
-        RCLCPP_INFO(this->get_logger(), ">>> PHASE 1: Navigating to waypoint (%.2f, %.2f) <<<",
-          pso_waypoint_x_, pso_waypoint_y_);
+        if (waypoint_is_redundant(pso_waypoint_x_, pso_waypoint_y_,
+            spawn_x_, spawn_y_, final_goal_x_, final_goal_y_,
+            params_.goal_tolerance))
+        {
+          // Direct path is clear — skip the detour and head straight to goal.
+          nav_state_ = NavState::TO_GOAL;
+          controller_->set_goal(final_goal_x_ - spawn_x_, final_goal_y_ - spawn_y_);
+          RCLCPP_INFO(this->get_logger(), "");
+          RCLCPP_INFO(this->get_logger(),
+            ">>> Waypoint adds no value (direct path) — skipping to goal <<<");
+          RCLCPP_INFO(this->get_logger(), ">>> PHASE 2: Navigating to goal (%.2f, %.2f) [map] <<<",
+            final_goal_x_, final_goal_y_);
+        } else {
+          // Navigate to waypoint first (convert map-frame waypoint to odom).
+          nav_state_ = NavState::TO_WAYPOINT;
+          controller_->set_goal(pso_waypoint_x_ - spawn_x_, pso_waypoint_y_ - spawn_y_);
+          RCLCPP_INFO(this->get_logger(), "");
+          RCLCPP_INFO(this->get_logger(),
+            ">>> PHASE 1: Navigating to waypoint (%.2f, %.2f) [map] <<<",
+            pso_waypoint_x_, pso_waypoint_y_);
+        }
         break;
 
       case NavState::TO_WAYPOINT:
         controller_->update();
         if (controller_->goal_reached()) {
           auto pose = controller_->get_pose();
-          RCLCPP_INFO(this->get_logger(), "Waypoint reached at (%.2f, %.2f)", pose.x, pose.y);
+          RCLCPP_INFO(this->get_logger(), "Waypoint reached at odom (%.2f, %.2f)", pose.x, pose.y);
 
-          // Now go to final goal
+          // Now go to final goal (convert map-frame goal to odom).
           nav_state_ = NavState::TO_GOAL;
-          controller_->set_goal(final_goal_x_, final_goal_y_);
+          controller_->set_goal(final_goal_x_ - spawn_x_, final_goal_y_ - spawn_y_);
           RCLCPP_INFO(this->get_logger(), "");
-          RCLCPP_INFO(this->get_logger(), ">>> PHASE 2: Navigating to goal (%.2f, %.2f) <<<",
+          RCLCPP_INFO(this->get_logger(), ">>> PHASE 2: Navigating to goal (%.2f, %.2f) [map] <<<",
             final_goal_x_, final_goal_y_);
         }
         break;
@@ -145,7 +189,37 @@ private:
     }
   }
 
-  enum class NavState {
+  /**
+   * @brief Decide whether the PSO waypoint actually adds value to the path.
+   *
+   * When the direct start→goal line is obstacle-free, the PSO fitness
+   * (dist(start,wp) + dist(wp,goal) + penalties) has a FLAT minimum along the
+   * entire line — every collinear point ties for "best". PSO then converges to
+   * some arbitrary point on that line, and routing through it just adds a
+   * pointless dogleg. This predicate detects that case so we can skip Phase 1.
+   *
+   * All coordinates are in the map frame.
+   *
+   * @param wx,wy  PSO waypoint
+   * @param sx,sy  start (spawn) pose
+   * @param gx,gy  final goal
+   * @param tol    distance tolerance in meters (reuse goal_tolerance)
+   * @return true if the waypoint should be skipped (navigate straight to goal)
+   */
+  bool waypoint_is_redundant(
+    double wx, double wy, double sx, double sy,
+    double gx, double gy, double tol) const
+  {
+    // Path-length test: a waypoint only earns its place if routing through it
+    // is meaningfully longer than the straight shot. On the direct line the
+    // two distances are equal (difference ~0), so we skip it.
+    const double through = std::hypot(wx - sx, wy - sy) + std::hypot(gx - wx, gy - wy);
+    const double direct = std::hypot(gx - sx, gy - sy);
+    return (through - direct) < tol;
+  }
+
+  enum class NavState
+  {
     WAITING,
     TO_WAYPOINT,
     TO_GOAL,
@@ -160,9 +234,10 @@ private:
   std::string robot_namespace_;
   double control_rate_;
   ethobot_robots::ControlParams params_;
-  bool wait_for_completion_;
   double final_goal_x_;
   double final_goal_y_;
+  double spawn_x_;
+  double spawn_y_;
 
   // PSO state
   uint32_t current_iteration_ = 0;

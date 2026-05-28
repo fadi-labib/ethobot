@@ -57,6 +57,11 @@
       </link>
     </model>
 
+    <!-- OBSTACLES: keep in sync with
+         ethobot_algorithms/config/obstacles.yaml, which feeds the PSO planner
+         and the RViz visualizer. ROS params can't drive this SDF, so edits
+         here must be mirrored there (and vice versa). -->
+
     <!-- Obstacle 1: at (1.0, 1.0), radius 0.3 - scaled for TurtleBot3 -->
     <model name="obstacle_1">
       <static>true</static>

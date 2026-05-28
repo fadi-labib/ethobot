@@ -1,3 +1,24 @@
+// Copyright 2026 Fadi Labib
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+// THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
+
 #include <memory>
 #include <vector>
 
@@ -34,14 +55,12 @@ public:
     particle_size_ = this->get_parameter("particle_size").as_double();
     goal_size_ = this->get_parameter("goal_size").as_double();
 
-    // Obstacles (same as in pso_path_planning_node)
-    // Scaled for TurtleBot3 (4x4 meter space)
-    obstacles_ = {
-      {1.0, 1.0, 0.3},
-      {2.0, 1.2, 0.25},
-      {1.5, 2.2, 0.28},
-      {0.6, 2.5, 0.2}
-    };
+    // Obstacles come from parameters (config/obstacles.yaml), same source the
+    // PSO node uses, so the RViz markers always match what the planner avoids.
+    this->declare_parameter("obstacle_x", std::vector<double>{});
+    this->declare_parameter("obstacle_y", std::vector<double>{});
+    this->declare_parameter("obstacle_radius", std::vector<double>{});
+    obstacles_ = load_obstacles();
 
     // Publisher
     marker_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>(
@@ -63,6 +82,27 @@ public:
   }
 
 private:
+  std::vector<std::vector<double>> load_obstacles()
+  {
+    auto xs = this->get_parameter("obstacle_x").as_double_array();
+    auto ys = this->get_parameter("obstacle_y").as_double_array();
+    auto rs = this->get_parameter("obstacle_radius").as_double_array();
+
+    if (xs.size() != ys.size() || xs.size() != rs.size()) {
+      RCLCPP_ERROR(this->get_logger(),
+        "obstacle_x/y/radius length mismatch (%zu/%zu/%zu) — ignoring obstacles",
+        xs.size(), ys.size(), rs.size());
+      return {};
+    }
+
+    std::vector<std::vector<double>> result;
+    result.reserve(xs.size());
+    for (std::size_t i = 0; i < xs.size(); ++i) {
+      result.push_back({xs[i], ys[i], rs[i]});
+    }
+    return result;
+  }
+
   void swarm_callback(const ethobot_interfaces::msg::SwarmState::SharedPtr msg)
   {
     visualization_msgs::msg::MarkerArray markers;

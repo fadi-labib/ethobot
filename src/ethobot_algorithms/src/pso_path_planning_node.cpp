@@ -1,3 +1,25 @@
+// Copyright 2026 Fadi Labib
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+// THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
+
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <memory>
@@ -54,18 +76,11 @@ public:
     algorithm_status_pub_ = this->create_publisher<ethobot_interfaces::msg::AlgorithmStatus>(
       "ethobot/algorithm_status", 10);
 
-    // Setup obstacles (circular obstacles)
-    // Format: {x, y, radius}
-    obstacles_ = {
-      {1.0, 1.0, 0.3},
-      {2.0, 1.2, 0.25},
-      {1.5, 2.2, 0.28},
-      {0.6, 2.5, 0.2}
-    };
-
-    // Check if direct path is blocked
-    direct_path_length_ = std::sqrt(
-      std::pow(goal_x_ - start_x_, 2) + std::pow(goal_y_ - start_y_, 2));
+    // Obstacles come from parameters (config/obstacles.yaml) as parallel arrays.
+    this->declare_parameter("obstacle_x", std::vector<double>{});
+    this->declare_parameter("obstacle_y", std::vector<double>{});
+    this->declare_parameter("obstacle_radius", std::vector<double>{});
+    obstacles_ = load_obstacles();
 
     // Setup PSO
     ethobot_algorithms::PsoParams params;
@@ -94,7 +109,6 @@ public:
     RCLCPP_INFO(this->get_logger(), "=== PSO Waypoint Optimization ===");
     RCLCPP_INFO(this->get_logger(), "Start: (%.1f, %.1f)", start_x_, start_y_);
     RCLCPP_INFO(this->get_logger(), "Goal: (%.1f, %.1f)", goal_x_, goal_y_);
-    RCLCPP_INFO(this->get_logger(), "Direct path length: %.2f", direct_path_length_);
     RCLCPP_INFO(this->get_logger(), "Obstacles: %zu", obstacles_.size());
     RCLCPP_INFO(this->get_logger(), "PSO will find optimal waypoint to avoid obstacles");
 
@@ -106,10 +120,43 @@ public:
   }
 
 private:
+  /**
+   * @brief Build the obstacle list from the obstacle_x/y/radius parameters.
+   *
+   * Returns {x, y, radius} triples. Returns empty (with a log message) when no
+   * obstacles are configured or the parallel arrays disagree in length.
+   */
+  std::vector<std::vector<double>> load_obstacles()
+  {
+    auto xs = this->get_parameter("obstacle_x").as_double_array();
+    auto ys = this->get_parameter("obstacle_y").as_double_array();
+    auto rs = this->get_parameter("obstacle_radius").as_double_array();
+
+    if (xs.size() != ys.size() || xs.size() != rs.size()) {
+      RCLCPP_ERROR(this->get_logger(),
+        "obstacle_x/y/radius length mismatch (%zu/%zu/%zu) — ignoring obstacles",
+        xs.size(), ys.size(), rs.size());
+      return {};
+    }
+    if (xs.empty()) {
+      RCLCPP_WARN(this->get_logger(),
+        "No obstacles configured (load config/obstacles.yaml to set them)");
+    }
+
+    std::vector<std::vector<double>> result;
+    result.reserve(xs.size());
+    for (std::size_t i = 0; i < xs.size(); ++i) {
+      result.push_back({xs[i], ys[i], rs[i]});
+    }
+    return result;
+  }
+
   void timer_callback()
   {
-    if (iteration_ >= static_cast<std::size_t>(max_iterations_)) {
-      // Optimization complete - publish final state and stop
+    const std::size_t current = pso_->get_iteration();
+
+    if (current >= static_cast<std::size_t>(max_iterations_)) {
+      // Optimization complete - publish final state once and stop
       if (!completed_) {
         completed_ = true;
         auto waypoint = pso_->get_best_solution();
@@ -121,43 +168,40 @@ private:
         RCLCPP_INFO(this->get_logger(), "Route: (%.1f,%.1f) → (%.2f,%.2f) → (%.1f,%.1f)",
           start_x_, start_y_, waypoint[0], waypoint[1], goal_x_, goal_y_);
 
-        // Publish FINAL swarm state
-        auto swarm_state = pso_->get_swarm_state();
-        swarm_state.header.frame_id = "map";
-        swarm_state.header.stamp = this->now();
-        swarm_state.iteration = static_cast<uint32_t>(max_iterations_);
-        swarm_state.max_iterations = static_cast<uint32_t>(max_iterations_);
-        swarm_state_pub_->publish(swarm_state);
+        publish_swarm_state(current);
       }
       return;
     }
 
-    // Execute one PSO step
+    // Execute one PSO step (solver increments its own iteration)
     pso_->step();
-    iteration_++;
+    const std::size_t after_step = pso_->get_iteration();
 
-    // Publish swarm state
-    auto swarm_state = pso_->get_swarm_state();
-    swarm_state.header.frame_id = "map";
-    swarm_state.header.stamp = this->now();
-    swarm_state.iteration = static_cast<uint32_t>(iteration_);
-    swarm_state.max_iterations = static_cast<uint32_t>(max_iterations_);
-    swarm_state_pub_->publish(swarm_state);
-
-    // Publish algorithm status
-    auto status = pso_->get_status();
-    status.header.stamp = this->now();
-    status.current_iteration = static_cast<uint32_t>(iteration_);
-    status.max_iterations = static_cast<uint32_t>(max_iterations_);
-    algorithm_status_pub_->publish(status);
+    publish_swarm_state(after_step);
 
     // Log progress every 10 iterations
-    if (iteration_ % 10 == 0) {
+    if (after_step % 10 == 0) {
       auto best = pso_->get_best_solution();
       RCLCPP_INFO(this->get_logger(),
         "Iteration %zu/%d: Waypoint (%.2f, %.2f), Fitness: %.4f",
-        iteration_, max_iterations_, best[0], best[1], pso_->get_best_fitness());
+        after_step, max_iterations_, best[0], best[1], pso_->get_best_fitness());
     }
+  }
+
+  void publish_swarm_state(std::size_t iteration)
+  {
+    auto swarm_state = pso_->get_swarm_state();
+    swarm_state.header.frame_id = "map";
+    swarm_state.header.stamp = this->now();
+    swarm_state.iteration = static_cast<uint32_t>(iteration);
+    swarm_state.max_iterations = static_cast<uint32_t>(max_iterations_);
+    swarm_state_pub_->publish(swarm_state);
+
+    auto status = pso_->get_status();
+    status.header.stamp = this->now();
+    status.current_iteration = static_cast<uint32_t>(iteration);
+    status.max_iterations = static_cast<uint32_t>(max_iterations_);
+    algorithm_status_pub_->publish(status);
   }
 
   /**
@@ -182,24 +226,11 @@ private:
       std::pow(goal_x_ - wx, 2) + std::pow(goal_y_ - wy, 2));
     double total_path_length = dist_start_to_wp + dist_wp_to_goal;
 
-    // Obstacle penalty for waypoint
+    // Obstacle penalty. The waypoint is an endpoint of both segments, so the
+    // segment checks already account for waypoint-on-obstacle — there is no
+    // separate waypoint-proximity term (which would double-count it).
     double obstacle_penalty = 0.0;
     for (const auto & obs : obstacles_) {
-      double ox = obs[0];
-      double oy = obs[1];
-      double radius = obs[2];
-
-      double dist_to_obs = std::sqrt(std::pow(wx - ox, 2) + std::pow(wy - oy, 2));
-
-      if (dist_to_obs < radius) {
-        // Inside obstacle - very heavy penalty
-        obstacle_penalty += 100.0;
-      } else if (dist_to_obs < radius + 0.3) {
-        // Close to obstacle - penalty (robot needs clearance)
-        obstacle_penalty += 30.0 * (radius + 0.3 - dist_to_obs);
-      }
-
-      // Also penalize if path segments cross near obstacles
       obstacle_penalty += check_path_segment_penalty(start_x_, start_y_, wx, wy, obs);
       obstacle_penalty += check_path_segment_penalty(wx, wy, goal_x_, goal_y_, obs);
     }
@@ -208,39 +239,46 @@ private:
   }
 
   /**
-   * @brief Check if a path segment passes too close to an obstacle
+   * @brief Penalty for a path segment passing through or near an obstacle.
+   *
+   * Finds the closest point on the segment to the obstacle centre, then:
+   *   - dist < radius           → segment intersects obstacle (hard penalty)
+   *   - dist < radius+clearance → too close, graduated penalty
+   *   - otherwise               → no penalty
+   *
+   * A degenerate (zero-length) segment collapses to a point check via t = 0,
+   * so a waypoint sitting on an obstacle is still penalised.
    */
-  double check_path_segment_penalty(double x1, double y1, double x2, double y2,
-                                     const std::vector<double> & obs)
+  double check_path_segment_penalty(
+    double x1, double y1, double x2, double y2,
+    const std::vector<double> & obs)
   {
     double ox = obs[0];
     double oy = obs[1];
     double radius = obs[2];
 
-    // Calculate closest point on line segment to obstacle center
     double dx = x2 - x1;
     double dy = y2 - y1;
     double seg_len_sq = dx * dx + dy * dy;
 
-    if (seg_len_sq < 0.0001) return 0.0;  // Degenerate segment
+    // Parameter t for closest point on the segment, clamped to [0, 1].
+    // A degenerate (zero-length) segment collapses to the point check at t = 0.
+    double t = 0.0;
+    if (seg_len_sq >= 1e-9) {
+      t = std::clamp(((ox - x1) * dx + (oy - y1) * dy) / seg_len_sq, 0.0, 1.0);
+    }
 
-    // Parameter t for closest point on line
-    double t = std::max(0.0, std::min(1.0,
-      ((ox - x1) * dx + (oy - y1) * dy) / seg_len_sq));
-
-    // Closest point on segment
     double closest_x = x1 + t * dx;
     double closest_y = y1 + t * dy;
+    double dist = std::hypot(closest_x - ox, closest_y - oy);
 
-    // Distance from obstacle center to closest point
-    double dist = std::sqrt(std::pow(closest_x - ox, 2) + std::pow(closest_y - oy, 2));
-
-    // Penalty if path passes through or near obstacle
-    double clearance = 0.2;  // Robot radius + safety margin
+    const double clearance = 0.3;  // robot radius + safety margin
+    if (dist < radius) {
+      return 100.0;  // segment passes through the obstacle
+    }
     if (dist < radius + clearance) {
       return 50.0 * (radius + clearance - dist);
     }
-
     return 0.0;
   }
 
@@ -260,12 +298,10 @@ private:
   double goal_x_;
   double goal_y_;
   int max_iterations_;
-  double direct_path_length_;
 
   std::vector<std::vector<double>> obstacles_;  // {x, y, radius}
 
   bool completed_ = false;
-  std::size_t iteration_ = 0;
 };
 
 int main(int argc, char ** argv)

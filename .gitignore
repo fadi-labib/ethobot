@@ -48,6 +48,10 @@ compile_commands.json
 *.log
 *.world.sdf
 
+# tf2 view_frames output (run from repo root)
+frames_*.gv
+frames_*.pdf
+
 # Testing
 .pytest_cache/
 .coverage

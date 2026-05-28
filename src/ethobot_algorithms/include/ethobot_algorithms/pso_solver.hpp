@@ -1,3 +1,24 @@
+// Copyright 2026 Fadi Labib
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+// THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
+
 #ifndef ETHOBOT_ALGORITHMS__PSO_SOLVER_HPP_
 #define ETHOBOT_ALGORITHMS__PSO_SOLVER_HPP_
 
@@ -79,13 +100,13 @@ public:
   ethobot_interfaces::msg::SwarmState get_swarm_state() const override;
 
   // Getters
-  const std::vector<Particle> & get_particles() const { return particles_; }
-  const PsoParams & get_params() const { return params_; }
+  const std::vector<Particle> & get_particles() const {return particles_;}
+  const PsoParams & get_params() const {return params_;}
 
   // Setters for runtime parameter tuning
-  void set_inertia_weight(double w) { params_.inertia_weight = w; }
-  void set_cognitive_coeff(double c1) { params_.cognitive_coeff = c1; }
-  void set_social_coeff(double c2) { params_.social_coeff = c2; }
+  void set_inertia_weight(double w) {params_.inertia_weight = w;}
+  void set_cognitive_coeff(double c1) {params_.cognitive_coeff = c1;}
+  void set_social_coeff(double c2) {params_.social_coeff = c2;}
 
 private:
   PsoParams params_;

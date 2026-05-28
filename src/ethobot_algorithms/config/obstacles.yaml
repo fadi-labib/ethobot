@@ -1,0 +1,19 @@
+# Single source of truth for obstacle geometry (map frame, meters).
+#
+# Consumed via ROS parameters by:
+#   - ethobot_algorithms / pso_path_planning_node  (fitness + collision checks)
+#   - ethobot_algorithms / swarm_visualizer_node   (RViz markers)
+#
+# Parallel arrays: obstacle i is (obstacle_x[i], obstacle_y[i]) with
+# obstacle_radius[i]. All three arrays MUST have the same length.
+#
+# NOTE: the Gazebo world (ethobot_simulation/worlds/ethobot_world.sdf) declares
+# the same obstacles for physics. ROS params can't drive the SDF directly, so
+# keep the two in sync by hand when editing either file.
+#
+# The '/**' wildcard applies these params to any node that loads this file.
+/**:
+  ros__parameters:
+    obstacle_x: [1.0, 2.0, 1.5, 0.6]
+    obstacle_y: [1.0, 1.2, 2.2, 2.5]
+    obstacle_radius: [0.3, 0.25, 0.28, 0.2]

@@ -1,3 +1,24 @@
+// Copyright 2026 Fadi Labib
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+// THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
+
 #ifndef ETHOBOT_CORE__ALGORITHM_BASE_HPP_
 #define ETHOBOT_CORE__ALGORITHM_BASE_HPP_
 
@@ -25,7 +46,7 @@ struct Problem
   std::size_t dimensions;                    // Number of dimensions (2 for 2D path)
   std::vector<double> lower_bounds;          // Min value per dimension
   std::vector<double> upper_bounds;          // Max value per dimension
-  std::function<double(const std::vector<double>&)> fitness_function;
+  std::function<double(const std::vector<double> &)> fitness_function;
   bool minimize = true;                      // true = lower fitness is better
 };
 
@@ -95,16 +116,16 @@ public:
   ethobot_interfaces::msg::AlgorithmStatus get_status() const;
 
   // Getters
-  std::string get_name() const { return name_; }
-  std::size_t get_iteration() const { return iteration_; }
-  double get_best_fitness() const { return best_fitness_; }
-  std::vector<double> get_best_solution() const { return best_solution_; }
-  bool is_running() const { return running_; }
+  std::string get_name() const {return name_;}
+  std::size_t get_iteration() const {return iteration_;}
+  double get_best_fitness() const {return best_fitness_;}
+  std::vector<double> get_best_solution() const {return best_solution_;}
+  bool is_running() const {return running_;}
 
   // Control
-  void pause() { paused_ = true; }
-  void resume() { paused_ = false; }
-  void stop() { running_ = false; }
+  void pause() {paused_ = true;}
+  void resume() {paused_ = false;}
+  void stop() {running_ = false;}
 
 protected:
   std::string name_;
