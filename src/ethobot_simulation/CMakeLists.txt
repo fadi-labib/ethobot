@@ -19,4 +19,10 @@ install(
   DESTINATION share/${PROJECT_NAME}/worlds
 )
 
+# Install config files (RViz config referenced by the launch files)
+install(
+  DIRECTORY config/
+  DESTINATION share/${PROJECT_NAME}/config
+)
+
 ament_package()

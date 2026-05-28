@@ -1,3 +1,25 @@
+// Copyright 2026 Fadi Labib
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+// THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
+
+#include <algorithm>
 #include <memory>
 #include <vector>
 
@@ -23,24 +45,30 @@ public:
   SwarmVisualizerNode()
   : Node("swarm_visualizer")
   {
-    // Parameters
-    this->declare_parameter("goal_x", 10.0);
-    this->declare_parameter("goal_y", 10.0);
-    this->declare_parameter("particle_size", 0.3);
-    this->declare_parameter("goal_size", 0.5);
+    // Parameters (defaults sized for the 4x4 m TurtleBot3 workspace)
+    this->declare_parameter("goal_x", 3.0);
+    this->declare_parameter("goal_y", 3.0);
+    this->declare_parameter("particle_size", 0.15);
+    this->declare_parameter("goal_size", 0.3);
+    // Fitness range used to colour particles (blue = good, red = bad). The best
+    // achievable fitness is roughly the direct path length, so the gradient is
+    // mapped between these bounds rather than from zero.
+    this->declare_parameter("fitness_color_min", 4.0);
+    this->declare_parameter("fitness_color_max", 12.0);
 
     goal_x_ = this->get_parameter("goal_x").as_double();
     goal_y_ = this->get_parameter("goal_y").as_double();
     particle_size_ = this->get_parameter("particle_size").as_double();
     goal_size_ = this->get_parameter("goal_size").as_double();
+    fitness_color_min_ = this->get_parameter("fitness_color_min").as_double();
+    fitness_color_max_ = this->get_parameter("fitness_color_max").as_double();
 
-    // Obstacles (same as in pso_path_planning_node)
-    obstacles_ = {
-      {3.0, 3.0, 1.5},
-      {7.0, 4.0, 1.0},
-      {5.0, 7.0, 1.2},
-      {2.0, 8.0, 0.8}
-    };
+    // Obstacles come from parameters (config/obstacles.yaml), same source the
+    // PSO node uses, so the RViz markers always match what the planner avoids.
+    this->declare_parameter("obstacle_x", std::vector<double>{});
+    this->declare_parameter("obstacle_y", std::vector<double>{});
+    this->declare_parameter("obstacle_radius", std::vector<double>{});
+    obstacles_ = load_obstacles();
 
     // Publisher
     marker_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>(
@@ -62,6 +90,27 @@ public:
   }
 
 private:
+  std::vector<std::vector<double>> load_obstacles()
+  {
+    auto xs = this->get_parameter("obstacle_x").as_double_array();
+    auto ys = this->get_parameter("obstacle_y").as_double_array();
+    auto rs = this->get_parameter("obstacle_radius").as_double_array();
+
+    if (xs.size() != ys.size() || xs.size() != rs.size()) {
+      RCLCPP_ERROR(this->get_logger(),
+        "obstacle_x/y/radius length mismatch (%zu/%zu/%zu) — ignoring obstacles",
+        xs.size(), ys.size(), rs.size());
+      return {};
+    }
+
+    std::vector<std::vector<double>> result;
+    result.reserve(xs.size());
+    for (std::size_t i = 0; i < xs.size(); ++i) {
+      result.push_back({xs[i], ys[i], rs[i]});
+    }
+    return result;
+  }
+
   void swarm_callback(const ethobot_interfaces::msg::SwarmState::SharedPtr msg)
   {
     visualization_msgs::msg::MarkerArray markers;
@@ -85,8 +134,11 @@ private:
       marker.scale.y = particle_size_;
       marker.scale.z = particle_size_;
 
-      // Color based on fitness (blue = good, red = bad)
-      double fitness_normalized = std::min(msg->particles[i].fitness / 5.0, 1.0);
+      // Color based on fitness (blue = good, red = bad), mapped across the
+      // configured [min, max] range so the best particles are not all red.
+      double span = std::max(fitness_color_max_ - fitness_color_min_, 1e-6);
+      double fitness_normalized =
+        std::clamp((msg->particles[i].fitness - fitness_color_min_) / span, 0.0, 1.0);
       marker.color.r = static_cast<float>(fitness_normalized);
       marker.color.g = 0.3f;
       marker.color.b = static_cast<float>(1.0 - fitness_normalized);
@@ -129,8 +181,8 @@ private:
     text_marker.type = visualization_msgs::msg::Marker::TEXT_VIEW_FACING;
     text_marker.action = visualization_msgs::msg::Marker::ADD;
 
-    text_marker.pose.position.x = 6.0;
-    text_marker.pose.position.y = -1.0;
+    text_marker.pose.position.x = 0.0;
+    text_marker.pose.position.y = 4.5;
     text_marker.pose.position.z = 1.0;
     text_marker.pose.orientation.w = 1.0;
 
@@ -221,13 +273,13 @@ private:
     ground_marker.type = visualization_msgs::msg::Marker::CUBE;
     ground_marker.action = visualization_msgs::msg::Marker::ADD;
 
-    ground_marker.pose.position.x = 6.0;
-    ground_marker.pose.position.y = 6.0;
+    ground_marker.pose.position.x = 2.0;
+    ground_marker.pose.position.y = 2.0;
     ground_marker.pose.position.z = -0.05;
     ground_marker.pose.orientation.w = 1.0;
 
-    ground_marker.scale.x = 14.0;
-    ground_marker.scale.y = 14.0;
+    ground_marker.scale.x = 6.0;
+    ground_marker.scale.y = 6.0;
     ground_marker.scale.z = 0.1;
 
     ground_marker.color.r = 0.2f;
@@ -252,6 +304,8 @@ private:
   double goal_y_;
   double particle_size_;
   double goal_size_;
+  double fitness_color_min_;
+  double fitness_color_max_;
   std::vector<std::vector<double>> obstacles_;
 };
 

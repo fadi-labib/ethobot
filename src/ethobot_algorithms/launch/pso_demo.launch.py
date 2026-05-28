@@ -1,14 +1,37 @@
+# Copyright 2026 Fadi Labib
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+
+
+import os
+
+from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch_ros.actions import Node
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
-from ament_index_python.packages import get_package_share_directory
-import os
+from launch_ros.actions import Node
 
 
 def generate_launch_description():
     pkg_share = get_package_share_directory('ethobot_algorithms')
     rviz_config = os.path.join(pkg_share, 'rviz', 'pso_demo.rviz')
+    obstacles_yaml = os.path.join(pkg_share, 'config', 'obstacles.yaml')
 
     return LaunchDescription([
         # Arguments
@@ -35,7 +58,7 @@ def generate_launch_description():
             executable='pso_path_planning_node',
             name='pso_path_planning',
             output='screen',
-            parameters=[{
+            parameters=[obstacles_yaml, {
                 'goal_x': LaunchConfiguration('goal_x'),
                 'goal_y': LaunchConfiguration('goal_y'),
                 'population_size': LaunchConfiguration('population_size'),
@@ -50,7 +73,7 @@ def generate_launch_description():
             executable='swarm_visualizer_node',
             name='swarm_visualizer',
             output='screen',
-            parameters=[{
+            parameters=[obstacles_yaml, {
                 'goal_x': LaunchConfiguration('goal_x'),
                 'goal_y': LaunchConfiguration('goal_y'),
                 'particle_size': 0.3,

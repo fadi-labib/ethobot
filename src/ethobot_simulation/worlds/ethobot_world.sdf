@@ -57,24 +57,29 @@
       </link>
     </model>
 
-    <!-- Obstacle 1: at (3, 3), radius 1.5 -->
+    <!-- OBSTACLES: keep in sync with
+         ethobot_algorithms/config/obstacles.yaml, which feeds the PSO planner
+         and the RViz visualizer. ROS params can't drive this SDF, so edits
+         here must be mirrored there (and vice versa). -->
+
+    <!-- Obstacle 1: at (1.0, 1.0), radius 0.3 - scaled for TurtleBot3 -->
     <model name="obstacle_1">
       <static>true</static>
-      <pose>3 3 0.5 0 0 0</pose>
+      <pose>1.0 1.0 0.15 0 0 0</pose>
       <link name="link">
         <collision name="collision">
           <geometry>
             <cylinder>
-              <radius>1.5</radius>
-              <length>1.0</length>
+              <radius>0.3</radius>
+              <length>0.3</length>
             </cylinder>
           </geometry>
         </collision>
         <visual name="visual">
           <geometry>
             <cylinder>
-              <radius>1.5</radius>
-              <length>1.0</length>
+              <radius>0.3</radius>
+              <length>0.3</length>
             </cylinder>
           </geometry>
           <material>
@@ -85,24 +90,24 @@
       </link>
     </model>
 
-    <!-- Obstacle 2: at (7, 4), radius 1.0 -->
+    <!-- Obstacle 2: at (2.0, 1.2), radius 0.25 -->
     <model name="obstacle_2">
       <static>true</static>
-      <pose>7 4 0.5 0 0 0</pose>
+      <pose>2.0 1.2 0.15 0 0 0</pose>
       <link name="link">
         <collision name="collision">
           <geometry>
             <cylinder>
-              <radius>1.0</radius>
-              <length>1.0</length>
+              <radius>0.25</radius>
+              <length>0.3</length>
             </cylinder>
           </geometry>
         </collision>
         <visual name="visual">
           <geometry>
             <cylinder>
-              <radius>1.0</radius>
-              <length>1.0</length>
+              <radius>0.25</radius>
+              <length>0.3</length>
             </cylinder>
           </geometry>
           <material>
@@ -113,24 +118,24 @@
       </link>
     </model>
 
-    <!-- Obstacle 3: at (5, 7), radius 1.2 -->
+    <!-- Obstacle 3: at (1.5, 2.2), radius 0.28 -->
     <model name="obstacle_3">
       <static>true</static>
-      <pose>5 7 0.5 0 0 0</pose>
+      <pose>1.5 2.2 0.15 0 0 0</pose>
       <link name="link">
         <collision name="collision">
           <geometry>
             <cylinder>
-              <radius>1.2</radius>
-              <length>1.0</length>
+              <radius>0.28</radius>
+              <length>0.3</length>
             </cylinder>
           </geometry>
         </collision>
         <visual name="visual">
           <geometry>
             <cylinder>
-              <radius>1.2</radius>
-              <length>1.0</length>
+              <radius>0.28</radius>
+              <length>0.3</length>
             </cylinder>
           </geometry>
           <material>
@@ -141,24 +146,24 @@
       </link>
     </model>
 
-    <!-- Obstacle 4: at (2, 8), radius 0.8 -->
+    <!-- Obstacle 4: at (0.6, 2.5), radius 0.2 -->
     <model name="obstacle_4">
       <static>true</static>
-      <pose>2 8 0.5 0 0 0</pose>
+      <pose>0.6 2.5 0.15 0 0 0</pose>
       <link name="link">
         <collision name="collision">
           <geometry>
             <cylinder>
-              <radius>0.8</radius>
-              <length>1.0</length>
+              <radius>0.2</radius>
+              <length>0.3</length>
             </cylinder>
           </geometry>
         </collision>
         <visual name="visual">
           <geometry>
             <cylinder>
-              <radius>0.8</radius>
-              <length>1.0</length>
+              <radius>0.2</radius>
+              <length>0.3</length>
             </cylinder>
           </geometry>
           <material>
@@ -169,15 +174,15 @@
       </link>
     </model>
 
-    <!-- Goal marker at (10, 10) -->
+    <!-- Goal marker at (3, 3) -->
     <model name="goal_marker">
       <static>true</static>
-      <pose>10 10 0.25 0 0 0</pose>
+      <pose>3 3 0.1 0 0 0</pose>
       <link name="link">
         <visual name="visual">
           <geometry>
             <sphere>
-              <radius>0.3</radius>
+              <radius>0.15</radius>
             </sphere>
           </geometry>
           <material>

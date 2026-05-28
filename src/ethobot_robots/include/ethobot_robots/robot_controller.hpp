@@ -1,3 +1,24 @@
+// Copyright 2026 Fadi Labib
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+// THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
+
 #ifndef ETHOBOT_ROBOTS__ROBOT_CONTROLLER_HPP_
 #define ETHOBOT_ROBOTS__ROBOT_CONTROLLER_HPP_
 
@@ -6,7 +27,7 @@
 #include <string>
 
 #include "rclcpp/rclcpp.hpp"
-#include "geometry_msgs/msg/twist.hpp"
+#include "geometry_msgs/msg/twist_stamped.hpp"
 #include "geometry_msgs/msg/pose2_d.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "tf2/utils.h"
@@ -48,12 +69,12 @@ public:
   /**
    * @brief Set control parameters
    */
-  void set_params(const ControlParams & params) { params_ = params; }
+  void set_params(const ControlParams & params) {params_ = params;}
 
   /**
    * @brief Get current control parameters
    */
-  const ControlParams & get_params() const { return params_; }
+  const ControlParams & get_params() const {return params_;}
 
   /**
    * @brief Set goal position
@@ -70,17 +91,17 @@ public:
   /**
    * @brief Check if robot has reached the goal
    */
-  bool goal_reached() const { return goal_reached_; }
+  bool goal_reached() const {return goal_reached_;}
 
   /**
    * @brief Check if a goal is currently set
    */
-  bool has_goal() const { return has_goal_; }
+  bool has_goal() const {return has_goal_;}
 
   /**
    * @brief Get current robot pose
    */
-  geometry_msgs::msg::Pose2D get_pose() const { return current_pose_; }
+  geometry_msgs::msg::Pose2D get_pose() const {return current_pose_;}
 
   /**
    * @brief Get distance to current goal
@@ -108,7 +129,7 @@ private:
   double normalize_angle(double angle) const;
 
   rclcpp::Node::SharedPtr node_;
-  rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
+  rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr cmd_vel_pub_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
 
   ControlParams params_;

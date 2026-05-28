@@ -1,12 +1,27 @@
+# Standalone parameters for the PSO waypoint path-planning node.
+#
+# Usage:
+#   ros2 run ethobot_algorithms pso_path_planning_node --ros-args \
+#     --params-file config/pso_params.yaml \
+#     --params-file config/obstacles.yaml
+#
+# Obstacles are intentionally NOT defined here — they live in obstacles.yaml
+# (single source of truth, shared with the visualizer). Load both files.
 pso_path_planning:
   ros__parameters:
-    # Goal position
-    goal_x: 10.0
-    goal_y: 10.0
+    # Start and goal in the map frame (must lie within the search space)
+    start_x: 0.0
+    start_y: 0.0
+    goal_x: 3.0
+    goal_y: 3.0
+
+    # Waypoint search space (square, metres)
+    search_space_min: 0.0
+    search_space_max: 4.0
 
     # PSO parameters
     population_size: 30
-    max_iterations: 100
+    max_iterations: 50
 
-    # Publishing rate
-    publish_rate_hz: 10.0
+    # Publishing rate (Hz)
+    publish_rate_hz: 5.0

@@ -1,3 +1,24 @@
+// Copyright 2026 Fadi Labib
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+// THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
+
 #include "ethobot_algorithms/pso_solver.hpp"
 
 #include <algorithm>
@@ -6,6 +27,14 @@
 
 namespace ethobot_algorithms
 {
+
+namespace
+{
+// A step that improves the global best by less than this counts as stagnant.
+constexpr double kConvergenceThreshold = 1e-4;
+// Number of consecutive stagnant steps before we declare convergence.
+constexpr std::size_t kConvergencePatience = 10;
+}  // namespace
 
 PsoSolver::PsoSolver(const PsoParams & params)
 : AlgorithmBase("PSO"),
@@ -21,6 +50,8 @@ void PsoSolver::initialize(const ethobot_core::Problem & problem)
   iteration_ = 0;
   best_fitness_ = std::numeric_limits<double>::infinity();
   global_best_fitness_ = std::numeric_limits<double>::infinity();
+  stagnation_count_ = 0;
+  converged_ = false;
 
   const std::size_t dims = problem_.dimensions;
 
@@ -61,6 +92,7 @@ void PsoSolver::initialize(const ethobot_core::Problem & problem)
 void PsoSolver::step()
 {
   const std::size_t dims = problem_.dimensions;
+  const double fitness_before = global_best_fitness_;
 
   for (auto & particle : particles_) {
     // Update velocity for each dimension
@@ -110,6 +142,15 @@ void PsoSolver::step()
   // Update algorithm state
   best_fitness_ = global_best_fitness_;
   best_solution_ = global_best_position_;
+  ++iteration_;
+
+  // Convergence: count consecutive steps with negligible improvement.
+  if (fitness_before - global_best_fitness_ < kConvergenceThreshold) {
+    ++stagnation_count_;
+  } else {
+    stagnation_count_ = 0;
+  }
+  converged_ = stagnation_count_ >= kConvergencePatience;
 }
 
 void PsoSolver::reset()
@@ -120,6 +161,8 @@ void PsoSolver::reset()
   iteration_ = 0;
   best_fitness_ = std::numeric_limits<double>::infinity();
   best_solution_.clear();
+  stagnation_count_ = 0;
+  converged_ = false;
 }
 
 ethobot_interfaces::msg::SwarmState PsoSolver::get_swarm_state() const
@@ -128,7 +171,7 @@ ethobot_interfaces::msg::SwarmState PsoSolver::get_swarm_state() const
   state.header.stamp = rclcpp::Clock().now();
   state.iteration = static_cast<uint32_t>(iteration_);
   state.global_best_fitness = global_best_fitness_;
-  state.converged = false;  // Could add convergence detection
+  state.converged = converged_;
 
   // Set global best position (assuming 2D or 3D)
   if (!global_best_position_.empty()) {

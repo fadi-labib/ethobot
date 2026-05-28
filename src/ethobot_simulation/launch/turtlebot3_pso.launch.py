@@ -1,5 +1,26 @@
-"""
-Simple launch file using TurtleBot3's built-in Gazebo world.
+# Copyright 2026 Fadi Labib
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+
+
+"""Simple launch file using TurtleBot3's built-in Gazebo world.
+
 Use this if the custom world has issues.
 """
 import os
@@ -76,14 +97,16 @@ def generate_launch_description():
                 'goal_tolerance': 0.2,
                 'max_linear_velocity': 0.15,
                 'max_angular_velocity': 1.5,
+                'final_goal_x': goal_x,
+                'final_goal_y': goal_y,
             }]
         ),
 
-        # Static transform for map frame
+        # Static transform: map -> odom (robot spawns at origin in empty_world)
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
-            name='map_broadcaster',
-            arguments=['0', '0', '0', '0', '0', '0', 'odom', 'map']
+            name='map_to_odom',
+            arguments=['0', '0', '0', '0', '0', '0', 'map', 'odom']
         ),
     ])

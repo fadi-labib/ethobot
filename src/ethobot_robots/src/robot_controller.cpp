@@ -1,3 +1,24 @@
+// Copyright 2026 Fadi Labib
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+// THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
+
 #include "ethobot_robots/robot_controller.hpp"
 
 namespace ethobot_robots
@@ -10,8 +31,8 @@ RobotController::RobotController(
 {
   std::string ns = robot_namespace.empty() ? "" : "/" + robot_namespace;
 
-  // Create publisher for velocity commands
-  cmd_vel_pub_ = node_->create_publisher<geometry_msgs::msg::Twist>(
+  // Create publisher for velocity commands (TwistStamped for TurtleBot3 Gazebo)
+  cmd_vel_pub_ = node_->create_publisher<geometry_msgs::msg::TwistStamped>(
     ns + "/cmd_vel", 10);
 
   // Subscribe to odometry
@@ -94,30 +115,36 @@ void RobotController::update()
   }
 
   // Compute velocity commands using proportional control
-  geometry_msgs::msg::Twist cmd;
+  geometry_msgs::msg::TwistStamped cmd;
+  cmd.header.stamp = node_->now();
+  cmd.header.frame_id = "base_footprint";
 
   // If angle error is large, rotate in place first
   if (std::abs(angle_error) > params_.angle_tolerance) {
-    cmd.linear.x = 0.0;
-    cmd.angular.z = params_.kp_angular * angle_error;
+    cmd.twist.linear.x = 0.0;
+    cmd.twist.angular.z = params_.kp_angular * angle_error;
   } else {
     // Move toward goal
-    cmd.linear.x = params_.kp_linear * distance;
-    cmd.angular.z = params_.kp_angular * angle_error;
+    cmd.twist.linear.x = params_.kp_linear * distance;
+    cmd.twist.angular.z = params_.kp_angular * angle_error;
   }
 
   // Clamp velocities to limits
-  cmd.linear.x = std::clamp(cmd.linear.x, -params_.max_linear_velocity, params_.max_linear_velocity);
-  cmd.angular.z = std::clamp(cmd.angular.z, -params_.max_angular_velocity, params_.max_angular_velocity);
+  cmd.twist.linear.x = std::clamp(
+    cmd.twist.linear.x, -params_.max_linear_velocity, params_.max_linear_velocity);
+  cmd.twist.angular.z = std::clamp(
+    cmd.twist.angular.z, -params_.max_angular_velocity, params_.max_angular_velocity);
 
   cmd_vel_pub_->publish(cmd);
 }
 
 void RobotController::stop()
 {
-  geometry_msgs::msg::Twist cmd;
-  cmd.linear.x = 0.0;
-  cmd.angular.z = 0.0;
+  geometry_msgs::msg::TwistStamped cmd;
+  cmd.header.stamp = node_->now();
+  cmd.header.frame_id = "base_footprint";
+  cmd.twist.linear.x = 0.0;
+  cmd.twist.angular.z = 0.0;
   cmd_vel_pub_->publish(cmd);
 }
 
